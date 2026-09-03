@@ -1,0 +1,1730 @@
+[
+  {
+    "col": 7,
+    "row": 3,
+    "code": "CA",
+    "continent": "North America",
+    "name": "Canada",
+    "count": 292
+  },
+  {
+    "col": 8,
+    "row": 3,
+    "code": "CA",
+    "continent": "North America",
+    "name": "Canada",
+    "count": 292
+  },
+  {
+    "col": 9,
+    "row": 3,
+    "code": "CA",
+    "continent": "North America",
+    "name": "Canada",
+    "count": 292
+  },
+  {
+    "col": 10,
+    "row": 3,
+    "code": "CA",
+    "continent": "North America",
+    "name": "Canada",
+    "count": 292
+  },
+  {
+    "col": 11,
+    "row": 3,
+    "code": "CA",
+    "continent": "North America",
+    "name": "Canada",
+    "count": 292
+  },
+  {
+    "col": 12,
+    "row": 3,
+    "code": "CA",
+    "continent": "North America",
+    "name": "Canada",
+    "count": 292
+  },
+  {
+    "col": 13,
+    "row": 3,
+    "code": "CA",
+    "continent": "North America",
+    "name": "Canada",
+    "count": 292
+  },
+  {
+    "col": 5,
+    "row": 4,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 6,
+    "row": 4,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 7,
+    "row": 4,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 8,
+    "row": 4,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 9,
+    "row": 4,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 10,
+    "row": 4,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 11,
+    "row": 4,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 12,
+    "row": 4,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 13,
+    "row": 4,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 14,
+    "row": 4,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 15,
+    "row": 4,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 16,
+    "row": 4,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 4,
+    "row": 5,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 5,
+    "row": 5,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 6,
+    "row": 5,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 7,
+    "row": 5,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 8,
+    "row": 5,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 9,
+    "row": 5,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 10,
+    "row": 5,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 11,
+    "row": 5,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 12,
+    "row": 5,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 13,
+    "row": 5,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 14,
+    "row": 5,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 15,
+    "row": 5,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 16,
+    "row": 5,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 17,
+    "row": 5,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 4,
+    "row": 6,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 5,
+    "row": 6,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 6,
+    "row": 6,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 7,
+    "row": 6,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 8,
+    "row": 6,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 9,
+    "row": 6,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 10,
+    "row": 6,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 11,
+    "row": 6,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 12,
+    "row": 6,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 13,
+    "row": 6,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 14,
+    "row": 6,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 15,
+    "row": 6,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 16,
+    "row": 6,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 17,
+    "row": 6,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 3,
+    "row": 7,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 4,
+    "row": 7,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 5,
+    "row": 7,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 6,
+    "row": 7,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 7,
+    "row": 7,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 8,
+    "row": 7,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 9,
+    "row": 7,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 10,
+    "row": 7,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 11,
+    "row": 7,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 12,
+    "row": 7,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 13,
+    "row": 7,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 14,
+    "row": 7,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 15,
+    "row": 7,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 16,
+    "row": 7,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 17,
+    "row": 7,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 3,
+    "row": 8,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 4,
+    "row": 8,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 5,
+    "row": 8,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 6,
+    "row": 8,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 7,
+    "row": 8,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 8,
+    "row": 8,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 9,
+    "row": 8,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 10,
+    "row": 8,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 11,
+    "row": 8,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 12,
+    "row": 8,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 13,
+    "row": 8,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 14,
+    "row": 8,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 15,
+    "row": 8,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 16,
+    "row": 8,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 4,
+    "row": 9,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 5,
+    "row": 9,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 6,
+    "row": 9,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 7,
+    "row": 9,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 8,
+    "row": 9,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 9,
+    "row": 9,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 10,
+    "row": 9,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 11,
+    "row": 9,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 12,
+    "row": 9,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 13,
+    "row": 9,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 14,
+    "row": 9,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 15,
+    "row": 9,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 4,
+    "row": 10,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 5,
+    "row": 10,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 6,
+    "row": 10,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 7,
+    "row": 10,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 8,
+    "row": 10,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 9,
+    "row": 10,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 10,
+    "row": 10,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 11,
+    "row": 10,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 12,
+    "row": 10,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 13,
+    "row": 10,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 14,
+    "row": 10,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 6,
+    "row": 11,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 7,
+    "row": 11,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 8,
+    "row": 11,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 9,
+    "row": 11,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 10,
+    "row": 11,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 11,
+    "row": 11,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 12,
+    "row": 11,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 13,
+    "row": 11,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 14,
+    "row": 11,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 7,
+    "row": 12,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 8,
+    "row": 12,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 9,
+    "row": 12,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 14,
+    "row": 12,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 8,
+    "row": 13,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 14,
+    "row": 13,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States",
+    "count": 4767
+  },
+  {
+    "col": 1,
+    "row": 2,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States - Alaska",
+    "count": 4767
+  },
+  {
+    "col": 2,
+    "row": 14,
+    "code": "US",
+    "continent": "North America",
+    "name": "United States - Hawaii",
+    "count": 4767
+  },
+  {
+    "col": 7,
+    "row": 15,
+    "code": "MX",
+    "continent": "North America",
+    "name": "Mexico",
+    "count": 66
+  },
+  {
+    "col": 9,
+    "row": 18,
+    "code": "CO",
+    "continent": "South America",
+    "name": "Colombia",
+    "count": 10
+  },
+  {
+    "col": 11,
+    "row": 20,
+    "code": "BR",
+    "continent": "South America",
+    "name": "Brazil",
+    "count": 218
+  },
+  {
+    "col": 12,
+    "row": 20,
+    "code": "BR",
+    "continent": "South America",
+    "name": "Brazil",
+    "count": 218
+  },
+  {
+    "col": 12,
+    "row": 21,
+    "code": "BR",
+    "continent": "South America",
+    "name": "Brazil",
+    "count": 218
+  },
+  {
+    "col": 10,
+    "row": 23,
+    "code": "CL",
+    "continent": "South America",
+    "name": "Chile",
+    "count": 65
+  },
+  {
+    "col": 11,
+    "row": 24,
+    "code": "AR",
+    "continent": "South America",
+    "name": "Argentina",
+    "count": 47
+  },
+  {
+    "col": 28,
+    "row": 2,
+    "code": "NO",
+    "continent": "Europe",
+    "name": "Norway",
+    "count": 112
+  },
+  {
+    "col": 29,
+    "row": 2,
+    "code": "SE",
+    "continent": "Europe",
+    "name": "Sweden",
+    "count": 122
+  },
+  {
+    "col": 30,
+    "row": 2,
+    "code": "FI",
+    "continent": "Europe",
+    "name": "Finland",
+    "count": 126
+  },
+  {
+    "col": 28,
+    "row": 3,
+    "code": "DK",
+    "continent": "Europe",
+    "name": "Denmark",
+    "count": 90
+  },
+  {
+    "col": 21,
+    "row": 5,
+    "code": "IE",
+    "continent": "Europe",
+    "name": "Ireland",
+    "count": 129
+  },
+  {
+    "col": 22,
+    "row": 4,
+    "code": "GB",
+    "continent": "Europe",
+    "name": "United Kingdom",
+    "count": 568
+  },
+  {
+    "col": 23,
+    "row": 4,
+    "code": "GB",
+    "continent": "Europe",
+    "name": "United Kingdom",
+    "count": 568
+  },
+  {
+    "col": 22,
+    "row": 5,
+    "code": "GB",
+    "continent": "Europe",
+    "name": "United Kingdom",
+    "count": 568
+  },
+  {
+    "col": 23,
+    "row": 5,
+    "code": "GB",
+    "continent": "Europe",
+    "name": "United Kingdom",
+    "count": 568
+  },
+  {
+    "col": 24,
+    "row": 5,
+    "code": "GB",
+    "continent": "Europe",
+    "name": "United Kingdom",
+    "count": 568
+  },
+  {
+    "col": 22,
+    "row": 6,
+    "code": "GB",
+    "continent": "Europe",
+    "name": "United Kingdom",
+    "count": 568
+  },
+  {
+    "col": 23,
+    "row": 6,
+    "code": "GB",
+    "continent": "Europe",
+    "name": "United Kingdom",
+    "count": 568
+  },
+  {
+    "col": 24,
+    "row": 6,
+    "code": "GB",
+    "continent": "Europe",
+    "name": "United Kingdom",
+    "count": 568
+  },
+  {
+    "col": 23,
+    "row": 7,
+    "code": "GB",
+    "continent": "Europe",
+    "name": "United Kingdom",
+    "count": 568
+  },
+  {
+    "col": 25,
+    "row": 4,
+    "code": "NL",
+    "continent": "Europe",
+    "name": "Netherlands",
+    "count": 193
+  },
+  {
+    "col": 26,
+    "row": 4,
+    "code": "NL",
+    "continent": "Europe",
+    "name": "Netherlands",
+    "count": 193
+  },
+  {
+    "col": 25,
+    "row": 5,
+    "code": "NL",
+    "continent": "Europe",
+    "name": "Netherlands",
+    "count": 193
+  },
+  {
+    "col": 26,
+    "row": 5,
+    "code": "NL",
+    "continent": "Europe",
+    "name": "Netherlands",
+    "count": 193
+  },
+  {
+    "col": 26,
+    "row": 6,
+    "code": "NL",
+    "continent": "Europe",
+    "name": "Netherlands",
+    "count": 193
+  },
+  {
+    "col": 27,
+    "row": 4,
+    "code": "DE",
+    "continent": "Europe",
+    "name": "Germany",
+    "count": 533
+  },
+  {
+    "col": 28,
+    "row": 4,
+    "code": "DE",
+    "continent": "Europe",
+    "name": "Germany",
+    "count": 533
+  },
+  {
+    "col": 29,
+    "row": 4,
+    "code": "DE",
+    "continent": "Europe",
+    "name": "Germany",
+    "count": 533
+  },
+  {
+    "col": 27,
+    "row": 5,
+    "code": "DE",
+    "continent": "Europe",
+    "name": "Germany",
+    "count": 533
+  },
+  {
+    "col": 28,
+    "row": 5,
+    "code": "DE",
+    "continent": "Europe",
+    "name": "Germany",
+    "count": 533
+  },
+  {
+    "col": 29,
+    "row": 5,
+    "code": "DE",
+    "continent": "Europe",
+    "name": "Germany",
+    "count": 533
+  },
+  {
+    "col": 27,
+    "row": 6,
+    "code": "DE",
+    "continent": "Europe",
+    "name": "Germany",
+    "count": 533
+  },
+  {
+    "col": 28,
+    "row": 6,
+    "code": "DE",
+    "continent": "Europe",
+    "name": "Germany",
+    "count": 533
+  },
+  {
+    "col": 29,
+    "row": 6,
+    "code": "DE",
+    "continent": "Europe",
+    "name": "Germany",
+    "count": 533
+  },
+  {
+    "col": 28,
+    "row": 7,
+    "code": "DE",
+    "continent": "Europe",
+    "name": "Germany",
+    "count": 533
+  },
+  {
+    "col": 25,
+    "row": 6,
+    "code": "BE",
+    "continent": "Europe",
+    "name": "Belgium",
+    "count": 47
+  },
+  {
+    "col": 30,
+    "row": 4,
+    "code": "PL",
+    "continent": "Europe",
+    "name": "Poland",
+    "count": 112
+  },
+  {
+    "col": 29,
+    "row": 7,
+    "code": "CZ",
+    "continent": "Europe",
+    "name": "Czech Republic",
+    "count": 28
+  },
+  {
+    "col": 26,
+    "row": 7,
+    "code": "CH",
+    "continent": "Europe",
+    "name": "Switzerland",
+    "count": 117
+  },
+  {
+    "col": 27,
+    "row": 7,
+    "code": "AT",
+    "continent": "Europe",
+    "name": "Austria",
+    "count": 52
+  },
+  {
+    "col": 24,
+    "row": 7,
+    "code": "FR",
+    "continent": "Europe",
+    "name": "France",
+    "count": 393
+  },
+  {
+    "col": 24,
+    "row": 8,
+    "code": "FR",
+    "continent": "Europe",
+    "name": "France",
+    "count": 393
+  },
+  {
+    "col": 25,
+    "row": 8,
+    "code": "FR",
+    "continent": "Europe",
+    "name": "France",
+    "count": 393
+  },
+  {
+    "col": 26,
+    "row": 8,
+    "code": "FR",
+    "continent": "Europe",
+    "name": "France",
+    "count": 393
+  },
+  {
+    "col": 25,
+    "row": 9,
+    "code": "FR",
+    "continent": "Europe",
+    "name": "France",
+    "count": 393
+  },
+  {
+    "col": 26,
+    "row": 9,
+    "code": "FR",
+    "continent": "Europe",
+    "name": "France",
+    "count": 393
+  },
+  {
+    "col": 22,
+    "row": 9,
+    "code": "PT",
+    "continent": "Europe",
+    "name": "Portugal",
+    "count": 35
+  },
+  {
+    "col": 23,
+    "row": 9,
+    "code": "ES",
+    "continent": "Europe",
+    "name": "Spain",
+    "count": 219
+  },
+  {
+    "col": 23,
+    "row": 10,
+    "code": "ES",
+    "continent": "Europe",
+    "name": "Spain",
+    "count": 219
+  },
+  {
+    "col": 27,
+    "row": 9,
+    "code": "IT",
+    "continent": "Europe",
+    "name": "Italy",
+    "count": 262
+  },
+  {
+    "col": 28,
+    "row": 10,
+    "code": "IT",
+    "continent": "Europe",
+    "name": "Italy",
+    "count": 262
+  },
+  {
+    "col": 30,
+    "row": 9,
+    "code": "RO",
+    "continent": "Europe",
+    "name": "Romania",
+    "count": 25
+  },
+  {
+    "col": 31,
+    "row": 10,
+    "code": "GR",
+    "continent": "Europe",
+    "name": "Greece",
+    "count": 30
+  },
+  {
+    "col": 31,
+    "row": 6,
+    "code": "UA",
+    "continent": "Europe",
+    "name": "Ukraine",
+    "count": 5
+  },
+  {
+    "col": 32,
+    "row": 4,
+    "code": "RU",
+    "continent": "Europe",
+    "name": "Russia",
+    "count": 188
+  },
+  {
+    "col": 33,
+    "row": 4,
+    "code": "RU",
+    "continent": "Europe",
+    "name": "Russia",
+    "count": 188
+  },
+  {
+    "col": 32,
+    "row": 9,
+    "code": "TR",
+    "continent": "Europe",
+    "name": "Turkey",
+    "count": 81
+  },
+  {
+    "col": 31,
+    "row": 12,
+    "code": "EG",
+    "continent": "Africa",
+    "name": "Egypt",
+    "count": 8
+  },
+  {
+    "col": 27,
+    "row": 16,
+    "code": "NG",
+    "continent": "Africa",
+    "name": "Nigeria",
+    "count": 6
+  },
+  {
+    "col": 29,
+    "row": 23,
+    "code": "ZA",
+    "continent": "Africa",
+    "name": "South Africa",
+    "count": 63
+  },
+  {
+    "col": 33,
+    "row": 11,
+    "code": "IL",
+    "continent": "Asia",
+    "name": "Israel",
+    "count": 20
+  },
+  {
+    "col": 34,
+    "row": 12,
+    "code": "SA",
+    "continent": "Asia",
+    "name": "Saudi Arabia",
+    "count": 18
+  },
+  {
+    "col": 35,
+    "row": 12,
+    "code": "AE",
+    "continent": "Asia",
+    "name": "United Arab Emirates",
+    "count": 58
+  },
+  {
+    "col": 36,
+    "row": 12,
+    "code": "IN",
+    "continent": "Asia",
+    "name": "India",
+    "count": 305
+  },
+  {
+    "col": 37,
+    "row": 12,
+    "code": "IN",
+    "continent": "Asia",
+    "name": "India",
+    "count": 305
+  },
+  {
+    "col": 36,
+    "row": 13,
+    "code": "IN",
+    "continent": "Asia",
+    "name": "India",
+    "count": 305
+  },
+  {
+    "col": 37,
+    "row": 13,
+    "code": "IN",
+    "continent": "Asia",
+    "name": "India",
+    "count": 305
+  },
+  {
+    "col": 39,
+    "row": 6,
+    "code": "CN",
+    "continent": "Asia",
+    "name": "China",
+    "count": 376
+  },
+  {
+    "col": 40,
+    "row": 6,
+    "code": "CN",
+    "continent": "Asia",
+    "name": "China",
+    "count": 376
+  },
+  {
+    "col": 41,
+    "row": 6,
+    "code": "CN",
+    "continent": "Asia",
+    "name": "China",
+    "count": 376
+  },
+  {
+    "col": 39,
+    "row": 7,
+    "code": "CN",
+    "continent": "Asia",
+    "name": "China",
+    "count": 376
+  },
+  {
+    "col": 40,
+    "row": 7,
+    "code": "CN",
+    "continent": "Asia",
+    "name": "China",
+    "count": 376
+  },
+  {
+    "col": 41,
+    "row": 7,
+    "code": "CN",
+    "continent": "Asia",
+    "name": "China",
+    "count": 376
+  },
+  {
+    "col": 39,
+    "row": 8,
+    "code": "CN",
+    "continent": "Asia",
+    "name": "China",
+    "count": 376
+  },
+  {
+    "col": 40,
+    "row": 8,
+    "code": "CN",
+    "continent": "Asia",
+    "name": "China",
+    "count": 376
+  },
+  {
+    "col": 41,
+    "row": 8,
+    "code": "CN",
+    "continent": "Asia",
+    "name": "China",
+    "count": 376
+  },
+  {
+    "col": 44,
+    "row": 6,
+    "code": "JP",
+    "continent": "Asia",
+    "name": "Japan",
+    "count": 261
+  },
+  {
+    "col": 45,
+    "row": 6,
+    "code": "JP",
+    "continent": "Asia",
+    "name": "Japan",
+    "count": 261
+  },
+  {
+    "col": 44,
+    "row": 7,
+    "code": "JP",
+    "continent": "Asia",
+    "name": "Japan",
+    "count": 261
+  },
+  {
+    "col": 45,
+    "row": 7,
+    "code": "JP",
+    "continent": "Asia",
+    "name": "Japan",
+    "count": 261
+  },
+  {
+    "col": 42,
+    "row": 6,
+    "code": "KR",
+    "continent": "Asia",
+    "name": "South Korea",
+    "count": 105
+  },
+  {
+    "col": 43,
+    "row": 6,
+    "code": "KR",
+    "continent": "Asia",
+    "name": "South Korea",
+    "count": 105
+  },
+  {
+    "col": 42,
+    "row": 9,
+    "code": "TW",
+    "continent": "Asia",
+    "name": "Taiwan",
+    "count": 37
+  },
+  {
+    "col": 41,
+    "row": 9,
+    "code": "HK",
+    "continent": "Asia",
+    "name": "Hong Kong",
+    "count": 75
+  },
+  {
+    "col": 41,
+    "row": 10,
+    "code": "HK",
+    "continent": "Asia",
+    "name": "Hong Kong",
+    "count": 75
+  },
+  {
+    "col": 39,
+    "row": 14,
+    "code": "SG",
+    "continent": "Asia",
+    "name": "Singapore",
+    "count": 66
+  },
+  {
+    "col": 40,
+    "row": 14,
+    "code": "SG",
+    "continent": "Asia",
+    "name": "Singapore",
+    "count": 66
+  },
+  {
+    "col": 38,
+    "row": 11,
+    "code": "TH",
+    "continent": "Asia",
+    "name": "Thailand",
+    "count": 15
+  },
+  {
+    "col": 39,
+    "row": 11,
+    "code": "VN",
+    "continent": "Asia",
+    "name": "Vietnam",
+    "count": 12
+  },
+  {
+    "col": 39,
+    "row": 13,
+    "code": "MY",
+    "continent": "Asia",
+    "name": "Malaysia",
+    "count": 125
+  },
+  {
+    "col": 41,
+    "row": 12,
+    "code": "PH",
+    "continent": "Asia",
+    "name": "Philippines",
+    "count": 16
+  },
+  {
+    "col": 41,
+    "row": 15,
+    "code": "ID",
+    "continent": "Asia",
+    "name": "Indonesia",
+    "count": 185
+  },
+  {
+    "col": 43,
+    "row": 19,
+    "code": "AU",
+    "continent": "Oceania",
+    "name": "Australia",
+    "count": 296
+  },
+  {
+    "col": 44,
+    "row": 19,
+    "code": "AU",
+    "continent": "Oceania",
+    "name": "Australia",
+    "count": 296
+  },
+  {
+    "col": 45,
+    "row": 19,
+    "code": "AU",
+    "continent": "Oceania",
+    "name": "Australia",
+    "count": 296
+  },
+  {
+    "col": 43,
+    "row": 20,
+    "code": "AU",
+    "continent": "Oceania",
+    "name": "Australia",
+    "count": 296
+  },
+  {
+    "col": 44,
+    "row": 20,
+    "code": "AU",
+    "continent": "Oceania",
+    "name": "Australia",
+    "count": 296
+  },
+  {
+    "col": 45,
+    "row": 20,
+    "code": "AU",
+    "continent": "Oceania",
+    "name": "Australia",
+    "count": 296
+  },
+  {
+    "col": 47,
+    "row": 22,
+    "code": "NZ",
+    "continent": "Oceania",
+    "name": "New Zealand",
+    "count": 64
+  }
+]

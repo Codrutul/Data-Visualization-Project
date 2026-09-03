@@ -1,0 +1,14 @@
+[
+  {"year": 2015, "total": 259, "us_pct": 45, "eu_pct": 20, "apac_pct": 25, "other_pct": 10},
+  {"year": 2016, "total": 300, "us_pct": 44, "eu_pct": 21, "apac_pct": 25, "other_pct": 10},
+  {"year": 2017, "total": 390, "us_pct": 43, "eu_pct": 21, "apac_pct": 26, "other_pct": 10},
+  {"year": 2018, "total": 430, "us_pct": 42, "eu_pct": 22, "apac_pct": 26, "other_pct": 10},
+  {"year": 2019, "total": 504, "us_pct": 41, "eu_pct": 22, "apac_pct": 27, "other_pct": 10},
+  {"year": 2020, "total": 597, "us_pct": 40, "eu_pct": 22, "apac_pct": 28, "other_pct": 10},
+  {"year": 2021, "total": 728, "us_pct": 39, "eu_pct": 23, "apac_pct": 28, "other_pct": 10},
+  {"year": 2022, "total": 850, "us_pct": 39, "eu_pct": 23, "apac_pct": 28, "other_pct": 10},
+  {"year": 2023, "total": 992, "us_pct": 39, "eu_pct": 23, "apac_pct": 28, "other_pct": 10},
+  {"year": 2024, "total": 1136, "us_pct": 40, "eu_pct": 22, "apac_pct": 28, "other_pct": 10},
+  {"year": 2025, "total": 1360, "us_pct": 41, "eu_pct": 22, "apac_pct": 27, "other_pct": 10},
+  {"year": 2026, "total": 1580, "us_pct": 42, "eu_pct": 21, "apac_pct": 27, "other_pct": 10}
+]

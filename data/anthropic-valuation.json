@@ -1,0 +1,38 @@
+[
+  {
+    "date": "2021-05",
+    "valuation_b": 0.35
+  },
+  {
+    "date": "2022-04",
+    "valuation_b": 4.0
+  },
+  {
+    "date": "2023-02",
+    "valuation_b": 4.1
+  },
+  {
+    "date": "2023-05",
+    "valuation_b": 4.4
+  },
+  {
+    "date": "2024-03",
+    "valuation_b": 18.4
+  },
+  {
+    "date": "2024-12",
+    "valuation_b": 61.5
+  },
+  {
+    "date": "2025-09",
+    "valuation_b": 183.0
+  },
+  {
+    "date": "2026-02",
+    "valuation_b": 380.0
+  },
+  {
+    "date": "2026-05",
+    "valuation_b": 965.0
+  }
+]

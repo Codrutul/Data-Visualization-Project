@@ -1,0 +1,112 @@
+[
+  {
+    "name": "PJM Interconnection",
+    "abbr": "PJM",
+    "states": ["VA", "MD", "PA", "NJ", "DE", "OH", "WV", "IN", "IL", "KY", "MI", "NC", "TN", "DC"],
+    "demand_twh": 800,
+    "peak_demand_gw": 150,
+    "dc_load_share_pct": 8.5,
+    "carbon_intensity_lb_co2_mwh": 820,
+    "color": "#3b82f6",
+    "center": [39.5, -77.5]
+  },
+  {
+    "name": "Midcontinent ISO",
+    "abbr": "MISO",
+    "states": ["MN", "IA", "MO", "AR", "LA", "MS", "ND", "SD", "WI", "MI", "IL", "IN", "KY", "TX"],
+    "demand_twh": 650,
+    "peak_demand_gw": 120,
+    "dc_load_share_pct": 4.2,
+    "carbon_intensity_lb_co2_mwh": 1050,
+    "color": "#ef4444",
+    "center": [42.0, -93.0]
+  },
+  {
+    "name": "Electric Reliability Council of Texas",
+    "abbr": "ERCOT",
+    "states": ["TX"],
+    "demand_twh": 430,
+    "peak_demand_gw": 85,
+    "dc_load_share_pct": 6.8,
+    "carbon_intensity_lb_co2_mwh": 790,
+    "color": "#f59e0b",
+    "center": [31.0, -99.0]
+  },
+  {
+    "name": "California ISO",
+    "abbr": "CAISO",
+    "states": ["CA", "NV"],
+    "demand_twh": 250,
+    "peak_demand_gw": 45,
+    "dc_load_share_pct": 5.5,
+    "carbon_intensity_lb_co2_mwh": 450,
+    "color": "#10b981",
+    "center": [36.0, -119.0]
+  },
+  {
+    "name": "Southwest Power Pool",
+    "abbr": "SPP",
+    "states": ["KS", "OK", "NE", "ND", "SD", "MO", "NM", "TX"],
+    "demand_twh": 280,
+    "peak_demand_gw": 55,
+    "dc_load_share_pct": 3.1,
+    "carbon_intensity_lb_co2_mwh": 890,
+    "color": "#8b5cf6",
+    "center": [38.0, -98.0]
+  },
+  {
+    "name": "New York ISO",
+    "abbr": "NYISO",
+    "states": ["NY"],
+    "demand_twh": 160,
+    "peak_demand_gw": 32,
+    "dc_load_share_pct": 4.5,
+    "carbon_intensity_lb_co2_mwh": 350,
+    "color": "#ec4899",
+    "center": [43.0, -75.0]
+  },
+  {
+    "name": "ISO New England",
+    "abbr": "ISO-NE",
+    "states": ["ME", "NH", "VT", "MA", "CT", "RI"],
+    "demand_twh": 120,
+    "peak_demand_gw": 25,
+    "dc_load_share_pct": 3.0,
+    "carbon_intensity_lb_co2_mwh": 410,
+    "color": "#06b6d4",
+    "center": [43.0, -71.0]
+  },
+  {
+    "name": "Southeast (SERC)",
+    "abbr": "SERC",
+    "states": ["AL", "GA", "SC", "NC", "TN", "MS", "FL"],
+    "demand_twh": 950,
+    "peak_demand_gw": 180,
+    "dc_load_share_pct": 7.0,
+    "carbon_intensity_lb_co2_mwh": 910,
+    "color": "#f97316",
+    "center": [33.0, -83.0]
+  },
+  {
+    "name": "Northwest (NWPP)",
+    "abbr": "NWPP",
+    "states": ["WA", "OR", "ID", "MT", "WY", "UT"],
+    "demand_twh": 310,
+    "peak_demand_gw": 60,
+    "dc_load_share_pct": 9.5,
+    "carbon_intensity_lb_co2_mwh": 250,
+    "color": "#14b8a6",
+    "center": [45.0, -119.0]
+  },
+  {
+    "name": "Southwest (SWPP)",
+    "abbr": "SWPP",
+    "states": ["AZ", "NM", "CO"],
+    "demand_twh": 200,
+    "peak_demand_gw": 40,
+    "dc_load_share_pct": 5.0,
+    "carbon_intensity_lb_co2_mwh": 760,
+    "color": "#6366f1",
+    "center": [34.0, -111.0]
+  }
+]

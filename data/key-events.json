@@ -1,0 +1,9 @@
+[
+  {"date": "2020-03", "label": "COVID-19 Pandemic", "type": "market"},
+  {"date": "2022-11", "label": "ChatGPT Launch", "type": "ai"},
+  {"date": "2023-05", "label": "NVIDIA Earnings Surge", "type": "ai"},
+  {"date": "2024-01", "label": "GPT-4 Turbo & AI Arms Race", "type": "ai"},
+  {"date": "2024-06", "label": "NVIDIA Passes $3T Market Cap", "type": "market"},
+  {"date": "2025-01", "label": "Stargate $500B AI Infrastructure Plan", "type": "infra"},
+  {"date": "2025-06", "label": "US Data Center Electricity 6% of Grid", "type": "infra"}
+]

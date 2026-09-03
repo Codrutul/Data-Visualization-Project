@@ -1,0 +1,10 @@
+[
+  {"date": "2019-07", "valuation_b": 4.0, "event": "Microsoft $1B partnership"},
+  {"date": "2021-01", "valuation_b": 14.0, "event": "Tender offer / Series B"},
+  {"date": "2023-01", "valuation_b": 29.0, "event": "Microsoft $10B investment"},
+  {"date": "2024-02", "valuation_b": 80.0, "event": "Thrive Capital tender offer"},
+  {"date": "2024-10", "valuation_b": 157.0, "event": "$6.6B Series E round"},
+  {"date": "2025-03", "valuation_b": 300.0, "event": "SoftBank $40B round"},
+  {"date": "2025-10", "valuation_b": 500.0, "event": "Employee liquidity tender"},
+  {"date": "2026-03", "valuation_b": 852.0, "event": "$122B mega-round"}
+]
