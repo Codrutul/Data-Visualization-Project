@@ -619,7 +619,7 @@
             <div class="nav-links">
                 <a href="#panel-global" class="nav-link">Global</a>
                 <a href="#panel-us" class="nav-link">US State</a>
-                <a href="#panel-why-states" class="nav-link">Why These States?</a>
+                
                 <a href="#panel-market" class="nav-link">Market</a>
             </div>
         </div>
@@ -704,7 +704,7 @@
         <!-- Panel 2: US State -->
         <section id="panel-us" class="panel">
             <h2 class="section-header">United States: The World's Data Center Hub</h2>
-            <p class="section-desc">The US leads the world in data center capacity. Northern Virginia, often called Data Center Alley, processes an immense portion of global internet traffic.</p>
+            <p class="section-desc">The US leads the world in data center capacity. <strong>Click any state</strong> to explore its placement factors — electricity costs, tax incentives, fiber connectivity, and land affordability.</p>
             
             <div class="layout-sidebar">
                 <div class="card">
@@ -720,57 +720,43 @@
                         </div>
                     </div>
                 </div>
-                <div class="card">
-                    <h3>Top 10 States</h3>
+                <!-- Sidebar: top list OR state detail (toggled by JS) -->
+                <div class="card" id="us-sidebar-overview">
+                    <h3 style="margin-bottom:0.25rem;">Top 10 States</h3>
+                    <p style="font-size:0.8rem;color:#64748b;margin-bottom:0.75rem;">Click any state on the map to explore its placement factors.</p>
                     <ul class="ranking-list" id="us-ranking-list">
                         <!-- Populated by JS -->
-                        <li><span>1. Virginia</span> <span>---</span></li>
-                        <li><span>2. Texas</span> <span>---</span></li>
-                        <li><span>3. California</span> <span>---</span></li>
-                        <li><span>4. Illinois</span> <span>---</span></li>
-                        <li><span>5. New York</span> <span>---</span></li>
                     </ul>
+                </div>
+                <!-- State detail panel (hidden initially) -->
+                <div class="card" id="us-sidebar-detail" style="display:none;">
+                    <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:1.25rem;">
+                        <button id="btn-back-to-map" style="display:flex;align-items:center;gap:5px;padding:5px 12px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;color:#475569;font-size:0.8rem;font-weight:600;cursor:pointer;">← Back</button>
+                        <h3 id="detail-state-name" style="margin:0;font-size:1.1rem;color:#0f172a;">Virginia</h3>
+                    </div>
+
+                    <!-- DC count badge -->
+                    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.25rem;background:#f0fdf4;border-radius:8px;padding:0.75rem 1rem;border:1px solid #bbf7d0;">
+                        <span style="font-size:1.9rem;font-weight:800;color:#059669;" id="detail-dc-count">674</span>
+                        <div>
+                            <div style="font-size:0.75rem;color:#047857;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Data Centers</div>
+                            <div style="font-size:0.75rem;color:#64748b;" id="detail-dc-rank">Ranked #1 in the US</div>
+                        </div>
+                    </div>
+
+                    <!-- Placement factor bars -->
+                    <div style="display:flex;flex-direction:column;gap:0.85rem;" id="detail-factors">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <!-- Key insight -->
+                    <div id="detail-insight" style="margin-top:1.25rem;background:#eff6ff;border-radius:8px;padding:0.85rem;border-left:3px solid #2563eb;font-size:0.82rem;color:#1e40af;line-height:1.5;">
+                    </div>
                 </div>
             </div>
         </section>
 
         <!-- Panel 3: Why These States? -->
-        <section id="panel-why-states" class="panel">
-            <h2 class="section-header">Why These States? The Factors Behind Data Center Placement</h2>
-            <p class="section-desc">Low electricity costs, generous tax incentives, dense fiber networks, and affordable land — these are the forces that pull data centers to Virginia, Texas, Oregon, and beyond.</p>
-
-            <div class="card" style="margin-bottom:2rem;">
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.25rem;">
-                    <h3 style="margin:0;">Top 10 States — Placement Factor Comparison</h3>
-                    <div style="font-size:0.8rem;color:#64748b;">Hover bars for details. Lower electricity cost & land cost = more attractive.</div>
-                </div>
-                <div style="position:relative;height:420px;width:100%;">
-                    <canvas id="chart-why-states"></canvas>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3 style="margin-bottom:1rem;">Key Takeaways</h3>
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem;">
-                    <div style="background:#eff6ff;border-radius:8px;padding:1rem;border-left:4px solid #2563eb;">
-                        <div style="font-weight:700;color:#1d4ed8;margin-bottom:4px;">⚡ Electricity Cost</div>
-                        <div style="font-size:0.85rem;color:#334155;">Texas (6.58¢/kWh) and Georgia (7.67¢/kWh) offer the lowest industrial rates among top DC states, saving operators millions annually per facility.</div>
-                    </div>
-                    <div style="background:#faf5ff;border-radius:8px;padding:1rem;border-left:4px solid #7c3aed;">
-                        <div style="font-weight:700;color:#6d28d9;margin-bottom:4px;">🏛️ Tax Incentives</div>
-                        <div style="font-size:0.85rem;color:#334155;">Virginia, Texas, Oregon, and Nevada offer full or partial sales tax exemptions on data center equipment — worth tens of millions per build.</div>
-                    </div>
-                    <div style="background:#ecfdf5;border-radius:8px;padding:1rem;border-left:4px solid #059669;">
-                        <div style="font-weight:700;color:#047857;margin-bottom:4px;">🔌 Fiber Connectivity</div>
-                        <div style="font-size:0.85rem;color:#334155;">Ashburn, VA sits at the original MAE-East internet exchange — the most fiber-dense location on earth. Dallas and Chicago are major peering hubs.</div>
-                    </div>
-                    <div style="background:#fff7ed;border-radius:8px;padding:1rem;border-left:4px solid #ea580c;">
-                        <div style="font-weight:700;color:#c2410c;margin-bottom:4px;">🏗️ Land Cost</div>
-                        <div style="font-size:0.85rem;color:#334155;">Texas, Oregon, Ohio, and Georgia offer significantly cheaper land than coastal metros, allowing massive campus-scale builds at lower cost.</div>
-                    </div>
-                </div>
-            </div>
-        </section>
 
         <!-- Panel 4: Data Centers ↔ Market Cap -->
         <section id="panel-market" class="panel">
@@ -1094,7 +1080,6 @@
             initScrollAnimations();
             initGlobalMap();
             initUSMap();
-            initWhyStatesChart();
             initMarketChart();
             
         });
@@ -1576,6 +1561,78 @@
             L.control.zoom({ position: 'topright' }).addTo(map);
             L.tileLayer(cartoDarkUrl, { attribution: cartoAttr, maxZoom: 18 }).addTo(map);
 
+            // Full per-state placement factor data (EIA + industry research)
+            const STATE_FACTORS = {
+                'VA': { elecCost: 9.31, elecScore: 7.0, taxScore: 9.5, fiberScore: 10.0, landScore: 7.0, insight: 'Ashburn (Loudoun County) is the internet\'s epicentre — home to MAE-East and the densest fiber concentration on earth. Virginia offers a 100% data center sales tax exemption.' },
+                'TX': { elecCost: 6.58, elecScore: 9.2, taxScore: 9.0, fiberScore: 8.5, landScore: 9.5, insight: 'Texas has the lowest industrial electricity rate among top DC states (6.58¢/kWh) thanks to its deregulated ERCOT grid with massive wind and solar capacity. Full equipment tax exemption.' },
+                'CA': { elecCost: 20.74, elecScore: 1.5, taxScore: 4.0, fiberScore: 9.0, landScore: 2.5, insight: 'California has the highest electricity costs (~20.74¢/kWh) and some of the most expensive land in the US, driving hyperscale investment away to cheaper inland states.' },
+                'GA': { elecCost: 7.67, elecScore: 8.5, taxScore: 7.0, fiberScore: 7.5, landScore: 8.5, insight: 'Georgia Power offers low industrial rates (7.67¢/kWh) backed by new Vogtle nuclear units. Atlanta is a major fiber hub and offers competitive tax incentives for large builds.' },
+                'IL': { elecCost: 10.65, elecScore: 5.5, taxScore: 6.5, fiberScore: 8.0, landScore: 7.5, insight: 'Chicago is one of the top US internet exchange hubs with excellent fiber diversity. Constellation\'s nuclear fleet provides stable baseload power despite higher rates (10.65¢/kWh).' },
+                'OH': { elecCost: 9.89, elecScore: 6.5, taxScore: 7.5, fiberScore: 6.5, landScore: 8.5, insight: 'Columbus/New Albany is the fastest-growing US data center market. Ohio offers tax abatements and abundant cheap land, with Microsoft, Amazon, and Google all building large campuses here.' },
+                'PA': { elecCost: 10.10, elecScore: 6.0, taxScore: 5.5, fiberScore: 7.0, landScore: 7.0, insight: 'Philadelphia benefits from proximity to NYC financial markets with lower costs. Pennsylvania\'s nuclear + Marcellus shale gas mix provides reliable power at moderate rates (10.10¢/kWh).' },
+                'AZ': { elecCost: 7.73, elecScore: 8.3, taxScore: 8.0, fiberScore: 6.0, landScore: 9.0, insight: 'Phoenix offers cheap land, low industrial rates (7.73¢/kWh) from Palo Verde nuclear + utility-scale solar, and a full IT equipment tax exemption. A top hyperscale destination.' },
+                'NY': { elecCost: 10.17, elecScore: 6.0, taxScore: 5.0, fiberScore: 8.5, landScore: 3.0, insight: 'New York City (60 Hudson St, 111 8th Ave) is a global financial data hub with superb fiber. However, high land costs and NYC electricity prices limit large-scale hyperscale builds.' },
+                'OR': { elecCost: 8.83, elecScore: 7.5, taxScore: 8.5, fiberScore: 7.0, landScore: 8.0, insight: 'The Hillsboro "Silicon Forest" benefits from cheap Columbia River hydroelectric power. Oregon offers a 100% property tax exemption for data center equipment lasting up to 15 years.' },
+                'IN': { elecCost: 7.20, elecScore: 8.8, taxScore: 7.0, fiberScore: 6.0, landScore: 9.0, insight: 'Indiana has surged as a low-cost alternative to Ohio — abundant cheap land, low electricity costs (~7.20¢/kWh), and proximity to Chicago fiber hubs.' },
+                'WA': { elecCost: 5.40, elecScore: 9.5, taxScore: 7.5, fiberScore: 7.0, landScore: 7.0, insight: 'Washington has some of the cheapest industrial power in the US (5.40¢/kWh) from Columbia River hydro. The Quincy/E. Wenatchee market hosts massive Microsoft and Amazon campuses.' },
+                'IA': { elecCost: 6.50, elecScore: 9.0, taxScore: 8.0, fiberScore: 5.5, landScore: 9.5, insight: 'Iowa is a top Google data center state — cheap renewable wind energy (6.50¢/kWh), massive land availability, and an accelerated tax exemption program attract hyperscale builds.' },
+                'FL': { elecCost: 9.50, elecScore: 6.8, taxScore: 6.0, fiberScore: 7.5, landScore: 7.0, insight: 'Miami is a key international gateway for South American connectivity via subsea cables. Florida has no state income tax but has higher industrial electricity rates than inland states.' },
+                'NC': { elecCost: 8.50, elecScore: 7.8, taxScore: 7.0, fiberScore: 6.5, landScore: 8.0, insight: 'The Research Triangle (Raleigh-Durham) and Charlotte are growing DC markets. Apple and Google have built large campuses here, attracted by moderate electricity costs and tax incentives.' },
+                'NV': { elecCost: 7.90, elecScore: 8.0, taxScore: 9.0, fiberScore: 5.5, landScore: 9.0, insight: "Nevada offers full data center sales tax exemption and Switch's massive SUPERNAP campuses in Las Vegas. Reno/Tahoe is home to Switch's Citadel — North America's largest campus." },
+                'CO': { elecCost: 8.50, elecScore: 7.5, taxScore: 7.0, fiberScore: 7.0, landScore: 7.5, insight: 'Denver is a key Midwest internet exchange node. Colorado has a favorable climate for free-air cooling and offers competitive incentives for large data center investments.' },
+                'MN': { elecCost: 8.20, elecScore: 7.8, taxScore: 6.5, fiberScore: 6.5, landScore: 8.5, insight: 'Minneapolis leverages cold climate for free-air cooling and has strong fiber infrastructure as a regional internet hub. Land is affordable compared to coastal states.' },
+                'MO': { elecCost: 7.50, elecScore: 8.5, taxScore: 7.0, fiberScore: 6.0, landScore: 9.0, insight: 'St. Louis and Kansas City are emerging DC markets with cheap land and industrial rates (~7.50¢/kWh). Missouri offers data center tax incentives targeting rural broadband expansion.' },
+                'MI': { elecCost: 9.20, elecScore: 7.0, taxScore: 6.5, fiberScore: 6.0, landScore: 8.0, insight: 'Metro Detroit is a growing data center market with reasonable land costs and a cold climate that reduces cooling costs. Michigan offers property tax exemptions for data center equipment.' },
+            };
+
+            // Default factors for any state not in the detailed dataset
+            function getStateFactor(abbr) {
+                return STATE_FACTORS[abbr] || {
+                    elecCost: 10.5, elecScore: 5.0, taxScore: 5.0, fiberScore: 5.0, landScore: 6.0,
+                    insight: 'This state has a growing data center presence. Specific placement factor data is limited for smaller markets.'
+                };
+            }
+
+            function showStateDetail(abbr, stateName, count, rank, totalUS) {
+                const factors = getStateFactor(abbr);
+                const pct = ((count / totalUS) * 100).toFixed(1);
+
+                document.getElementById('us-sidebar-overview').style.display = 'none';
+                document.getElementById('us-sidebar-detail').style.display = 'block';
+
+                document.getElementById('detail-state-name').textContent = stateName;
+                document.getElementById('detail-dc-count').textContent = count.toLocaleString();
+                document.getElementById('detail-dc-rank').textContent = count > 0 ? `Ranked #${rank} in the US · ${pct}% of total` : 'No major DC facilities tracked';
+                document.getElementById('detail-insight').textContent = factors.insight;
+
+                const factorRows = [
+                    { label: '⚡ Electricity Cost', value: `${factors.elecCost}¢/kWh`, score: factors.elecScore, color: '#2563eb', bg: '#eff6ff', note: factors.elecScore >= 8 ? 'Very competitive' : factors.elecScore >= 6 ? 'Moderate' : 'High — cost headwind' },
+                    { label: '🏛️ Tax Incentives', value: `Score ${factors.taxScore}/10`, score: factors.taxScore, color: '#7c3aed', bg: '#faf5ff', note: factors.taxScore >= 8 ? 'Strong exemptions' : factors.taxScore >= 6 ? 'Moderate incentives' : 'Limited programs' },
+                    { label: '🔌 Fiber Connectivity', value: `Score ${factors.fiberScore}/10`, score: factors.fiberScore, color: '#059669', bg: '#ecfdf5', note: factors.fiberScore >= 9 ? 'Major internet hub' : factors.fiberScore >= 7 ? 'Good connectivity' : 'Adequate' },
+                    { label: '🏗️ Land Affordability', value: `Score ${factors.landScore}/10`, score: factors.landScore, color: '#ea580c', bg: '#fff7ed', note: factors.landScore >= 9 ? 'Very cheap land' : factors.landScore >= 7 ? 'Affordable' : 'Premium pricing' }
+                ];
+
+                document.getElementById('detail-factors').innerHTML = factorRows.map(f => `
+                    <div style="background:${f.bg};border-radius:8px;padding:0.7rem 0.85rem;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                            <span style="font-size:0.82rem;font-weight:700;color:${f.color};">${f.label}</span>
+                            <span style="font-size:0.78rem;font-weight:700;color:#0f172a;">${f.value}</span>
+                        </div>
+                        <div style="background:#e2e8f0;border-radius:4px;height:7px;overflow:hidden;margin-bottom:4px;">
+                            <div style="width:${f.score * 10}%;height:100%;background:${f.color};border-radius:4px;transition:width 0.4s ease;"></div>
+                        </div>
+                        <div style="font-size:0.73rem;color:#64748b;">${f.note}</div>
+                    </div>
+                `).join('');
+            }
+
+            function showOverview() {
+                document.getElementById('us-sidebar-detail').style.display = 'none';
+                document.getElementById('us-sidebar-overview').style.display = 'block';
+            }
+
+            document.getElementById('btn-back-to-map').addEventListener('click', showOverview);
+
             try {
                 const [stateData, locations, statesGeo] = await Promise.all([
                     loadJSON('data/dc-count-by-state.json'),
@@ -1594,13 +1651,23 @@
                 // Populate ranking sidebar
                 const rankingList = document.getElementById('us-ranking-list');
                 rankingList.innerHTML = sorted.slice(0, 10).map(([abbr, count], i) => `
-                    <li>
+                    <li style="cursor:pointer;" class="ranking-state-item" data-abbr="${abbr}" data-count="${count}" data-rank="${i+1}">
                         <span style="color:${i < 3 ? '#059669' : '#1e293b'};font-weight:${i < 3 ? '600' : '400'};">
                             ${i + 1}. ${abbrToStateName[abbr] || abbr}
                         </span>
                         <span style="color:#059669;font-weight:700;">${count}</span>
                     </li>
                 `).join('');
+
+                // Click on ranking items
+                rankingList.querySelectorAll('.ranking-state-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const abbr = item.dataset.abbr;
+                        const count = parseInt(item.dataset.count);
+                        const rank = parseInt(item.dataset.rank);
+                        showStateDetail(abbr, abbrToStateName[abbr] || abbr, count, rank, totalUS);
+                    });
+                });
 
                 // State choropleth — darker green = more data centers
                 L.geoJSON(statesGeo, {
@@ -1635,7 +1702,7 @@
                                     <span style="color:#059669;font-size:20px;font-weight:800;">${count}</span>
                                     <span style="color:#64748b;font-size:12px;">data centers</span>
                                 </div>
-                                <div style="font-size:11px;color:#64748b;margin-top:2px;">${pct}% of US total</div>
+                                <div style="font-size:11px;color:#64748b;margin-top:2px;">${pct}% of US total · Click for placement details</div>
                             </div>`,
                             { sticky: true }
                         );
@@ -1652,12 +1719,18 @@
                         });
 
                         layer.on('mouseout', () => {
-                            const fillColor = getStateColor(count);
                             layer.setStyle({
                                 weight: count > 0 ? 1.2 : 0.6,
                                 color: count > 0 ? '#334155' : '#cbd5e1',
                                 fillOpacity: count > 0 ? 0.85 : 0.3
                             });
+                        });
+
+                        // Click → show state detail
+                        layer.on('click', () => {
+                            if (count > 0 || STATE_FACTORS[abbr]) {
+                                showStateDetail(abbr, name, count, rank, totalUS);
+                            }
                         });
                     }
                 }).addTo(map);
@@ -1677,7 +1750,7 @@
                     </div>`).addTo(map);
                 });
 
-                // Detailed Legend (Darker = More Data Centers)
+                // Detailed Legend
                 const legend = L.control({ position: 'bottomleft' });
                 legend.onAdd = () => {
                     const div = L.DomUtil.create('div');
@@ -1685,42 +1758,13 @@
                         <div style="background:rgba(255,255,255,0.95);padding:12px 16px;border-radius:10px;border:1px solid #e2e8f0;font-family:Inter,sans-serif;font-size:11px;color:#1e293b;box-shadow:0 4px 12px rgba(0,0,0,0.08);min-width:180px;">
                             <div style="font-weight:700;font-size:12px;color:#0f172a;margin-bottom:8px;">Data Centers per State</div>
                             <div style="display:flex;flex-direction:column;gap:4px;">
-                                <div style="display:flex;align-items:center;gap:8px;">
-                                    <span style="display:block;width:20px;height:12px;background:#14532d;border-radius:2px;"></span>
-                                    <span style="font-weight:600;color:#0f172a;">500+</span>
-                                    <span style="color:#64748b;font-size:10px;margin-left:auto;">(VA, TX, CA)</span>
-                                </div>
-                                <div style="display:flex;align-items:center;gap:8px;">
-                                    <span style="display:block;width:20px;height:12px;background:#15803d;border-radius:2px;"></span>
-                                    <span style="font-weight:500;">200 – 499</span>
-                                    <span style="color:#64748b;font-size:10px;margin-left:auto;">(IL, NY)</span>
-                                </div>
-                                <div style="display:flex;align-items:center;gap:8px;">
-                                    <span style="display:block;width:20px;height:12px;background:#16a34a;border-radius:2px;"></span>
-                                    <span style="font-weight:500;">150 – 199</span>
-                                    <span style="color:#64748b;font-size:10px;margin-left:auto;">(FL, OH, GA, WA...)</span>
-                                </div>
-                                <div style="display:flex;align-items:center;gap:8px;">
-                                    <span style="display:block;width:20px;height:12px;background:#22c55e;border-radius:2px;"></span>
-                                    <span style="font-weight:500;">100 – 149</span>
-                                    <span style="color:#64748b;font-size:10px;margin-left:auto;">(NC, AZ, PA, CO...)</span>
-                                </div>
-                                <div style="display:flex;align-items:center;gap:8px;">
-                                    <span style="display:block;width:20px;height:12px;background:#4ade80;border-radius:2px;"></span>
-                                    <span style="font-weight:500;">50 – 99</span>
-                                </div>
-                                <div style="display:flex;align-items:center;gap:8px;">
-                                    <span style="display:block;width:20px;height:12px;background:#86efac;border-radius:2px;"></span>
-                                    <span style="font-weight:500;">25 – 49</span>
-                                </div>
-                                <div style="display:flex;align-items:center;gap:8px;">
-                                    <span style="display:block;width:20px;height:12px;background:#bbf7d0;border-radius:2px;"></span>
-                                    <span style="font-weight:500;">15 – 24</span>
-                                </div>
-                                <div style="display:flex;align-items:center;gap:8px;">
-                                    <span style="display:block;width:20px;height:12px;background:#dcfce7;border-radius:2px;"></span>
-                                    <span style="font-weight:500;">1 – 14</span>
-                                </div>
+                                <div style="display:flex;align-items:center;gap:8px;"><span style="display:block;width:20px;height:12px;background:#14532d;border-radius:2px;"></span><span style="font-weight:600;color:#0f172a;">500+</span><span style="color:#64748b;font-size:10px;margin-left:auto;">(VA, TX, CA)</span></div>
+                                <div style="display:flex;align-items:center;gap:8px;"><span style="display:block;width:20px;height:12px;background:#15803d;border-radius:2px;"></span><span style="font-weight:500;">200 – 499</span><span style="color:#64748b;font-size:10px;margin-left:auto;">(IL, NY)</span></div>
+                                <div style="display:flex;align-items:center;gap:8px;"><span style="display:block;width:20px;height:12px;background:#16a34a;border-radius:2px;"></span><span style="font-weight:500;">150 – 199</span></div>
+                                <div style="display:flex;align-items:center;gap:8px;"><span style="display:block;width:20px;height:12px;background:#22c55e;border-radius:2px;"></span><span style="font-weight:500;">100 – 149</span></div>
+                                <div style="display:flex;align-items:center;gap:8px;"><span style="display:block;width:20px;height:12px;background:#4ade80;border-radius:2px;"></span><span style="font-weight:500;">50 – 99</span></div>
+                                <div style="display:flex;align-items:center;gap:8px;"><span style="display:block;width:20px;height:12px;background:#86efac;border-radius:2px;"></span><span style="font-weight:500;">25 – 49</span></div>
+                                <div style="display:flex;align-items:center;gap:8px;"><span style="display:block;width:20px;height:12px;background:#bbf7d0;border-radius:2px;"></span><span style="font-weight:500;">1 – 24</span></div>
                             </div>
                         </div>`;
                     return div;
@@ -1733,76 +1777,8 @@
         }
 
         // ============================================================
-        // PANEL 3: WHY THESE STATES? — PLACEMENT FACTOR COMPARISON
+        // PANEL 3 REMOVED (merged into Panel 2 click interaction)
         // ============================================================
-        async function initWhyStatesChart() {
-            try {
-                const stateFactors = [
-                    { state: 'Virginia',   dcs: 674, elecCost: 9.31, elecScore: 7.0, taxScore: 9.5, fiberScore: 10.0, landScore: 7.0 },
-                    { state: 'Texas',      dcs: 537, elecCost: 6.58, elecScore: 9.2, taxScore: 9.0, fiberScore: 8.5,  landScore: 9.5 },
-                    { state: 'California', dcs: 296, elecCost: 20.74, elecScore: 1.5, taxScore: 4.0, fiberScore: 9.0, landScore: 2.5 },
-                    { state: 'Georgia',    dcs: 276, elecCost: 7.67, elecScore: 8.5, taxScore: 7.0, fiberScore: 7.5,  landScore: 8.5 },
-                    { state: 'Illinois',   dcs: 242, elecCost: 10.65, elecScore: 5.5, taxScore: 6.5, fiberScore: 8.0, landScore: 7.5 },
-                    { state: 'Ohio',       dcs: 240, elecCost: 9.89, elecScore: 6.5, taxScore: 7.5, fiberScore: 6.5,  landScore: 8.5 },
-                    { state: 'Pennsylvania', dcs: 174, elecCost: 10.10, elecScore: 6.0, taxScore: 5.5, fiberScore: 7.0, landScore: 7.0 },
-                    { state: 'Arizona',    dcs: 160, elecCost: 7.73, elecScore: 8.3, taxScore: 8.0, fiberScore: 6.0,  landScore: 9.0 },
-                    { state: 'Oregon',     dcs: 135, elecCost: 8.83, elecScore: 7.5, taxScore: 8.5, fiberScore: 7.0,  landScore: 8.0 },
-                    { state: 'New York',   dcs: 135, elecCost: 10.17, elecScore: 6.0, taxScore: 5.0, fiberScore: 8.5, landScore: 3.0 }
-                ];
-
-                const ctx = document.getElementById('chart-why-states').getContext('2d');
-                new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: stateFactors.map(s => `${s.state} (${s.dcs})`),
-                        datasets: [
-                            { label: '⚡ Electricity (low cost)', data: stateFactors.map(s => s.elecScore), backgroundColor: '#2563eb', borderRadius: 4 },
-                            { label: '🏛️ Tax Incentives', data: stateFactors.map(s => s.taxScore), backgroundColor: '#7c3aed', borderRadius: 4 },
-                            { label: '🔌 Fiber Connectivity', data: stateFactors.map(s => s.fiberScore), backgroundColor: '#059669', borderRadius: 4 },
-                            { label: '🏗️ Land Affordability', data: stateFactors.map(s => s.landScore), backgroundColor: '#ea580c', borderRadius: 4 }
-                        ]
-                    },
-                    options: {
-                        indexAxis: 'y',
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'top',
-                                labels: { usePointStyle: true, padding: 16, font: { size: 12, weight: '600' }, color: '#0f172a' }
-                            },
-                            tooltip: {
-                                backgroundColor: 'rgba(255,255,255,0.96)',
-                                borderColor: '#e2e8f0',
-                                borderWidth: 1,
-                                titleColor: '#0f172a',
-                                bodyColor: '#1e293b',
-                                callbacks: {
-                                    afterTitle: (items) => {
-                                        const s = stateFactors[items[0].dataIndex];
-                                        return `${s.dcs} data centers | Electricity: ${s.elecCost}¢/kWh`;
-                                    }
-                                }
-                            }
-                        },
-                        scales: {
-                            x: {
-                                min: 0, max: 10,
-                                grid: { color: '#f1f5f9' },
-                                title: { display: true, text: 'Attractiveness Score (0–10, higher = better)', color: '#64748b', font: { size: 11 } },
-                                ticks: { color: '#64748b', stepSize: 2 }
-                            },
-                            y: {
-                                grid: { display: false },
-                                ticks: { color: '#0f172a', font: { size: 12, weight: '600' } }
-                            }
-                        }
-                    }
-                });
-            } catch(e) {
-                console.error('Why States chart error:', e);
-            }
-        }
 
         // ============================================================
         // PANEL 4: DATA CENTERS ↔ MARKET CAP (SIMPLE BAR CHART RACE)
