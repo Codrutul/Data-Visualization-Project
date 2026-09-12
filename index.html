@@ -525,6 +525,21 @@
             margin-bottom: 1.5rem;
         }
 
+        #dc-dot-map .leaflet-control-attribution { display: none !important; }
+        #dc-dot-map .leaflet-control-zoom { display: none !important; }
+        @keyframes dotPop {
+            0%   { transform: scale(0.1); opacity: 0; }
+            60%  { transform: scale(1.5); opacity: 1; }
+            100% { transform: scale(1);   opacity: 1; }
+        }
+        .dc-dot-new {
+            animation: dotPop 0.5s ease-out forwards;
+        }
+        @media (max-width: 900px) {
+            #panel-market .card > div[style*="grid-template-columns"] {
+                grid-template-columns: 1fr !important;
+            }
+        }
         @media (max-width: 900px) {
             .live-metrics-grid {
                 grid-template-columns: 1fr 1fr;
@@ -764,35 +779,44 @@
             <p class="section-desc">More data centers built → higher company valuations. Drag the slider to see the correlation unfold from 2019 to 2026.</p>
 
             <div class="card">
-                <!-- Top row: Date + DC counter -->
-                <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:1rem;margin-bottom:1.25rem;">
-                    <div>
-                        <div id="timeline-current-date" style="font-size:2.2rem;font-weight:800;color:#0f172a;line-height:1;">Jan 2019</div>
+                <!-- Header row: Date + controls + combined mcap -->
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1rem;">
+                    <div id="timeline-current-date" style="font-size:2rem;font-weight:800;color:#0f172a;line-height:1;">Jan 2019</div>
+                    <div style="display:flex;align-items:center;gap:0.75rem;">
+                        <button id="btn-play-pause" style="padding:6px 18px;border:none;border-radius:6px;background:#2563eb;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;">▶ Play</button>
+                        <button id="btn-speed" style="padding:6px 12px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;color:#64748b;font-weight:600;font-size:0.8rem;cursor:pointer;">1x</button>
                     </div>
-                    <div style="text-align:right;">
-                        <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;color:#64748b;font-weight:600;">Worldwide Hyperscale Data Centers</div>
-                        <div id="metric-ww-dc" style="font-size:2.2rem;font-weight:800;color:#2563eb;line-height:1;">504</div>
-                    </div>
+                    <div id="metric-total-mcap" style="font-size:0.9rem;color:#64748b;">Combined: <strong style="color:#0f172a;">$2.8T</strong></div>
                 </div>
 
                 <!-- Slider -->
-                <div style="margin-bottom:1.5rem;">
+                <div style="margin-bottom:1.25rem;">
                     <input type="range" id="timeline-slider" min="0" max="91" step="1" value="0" class="timeline-range" style="width:100%;">
                     <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:#94a3b8;margin-top:4px;padding:0 2px;">
                         <span>2019</span><span>2020</span><span>2021</span><span>2022</span><span>2023</span><span>2024</span><span>2025</span><span>2026</span>
                     </div>
                 </div>
 
-                <!-- Play button inline -->
-                <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.25rem;">
-                    <button id="btn-play-pause" style="padding:6px 18px;border:none;border-radius:6px;background:#2563eb;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;">▶ Play</button>
-                    <button id="btn-speed" style="padding:6px 12px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;color:#64748b;font-weight:600;font-size:0.8rem;cursor:pointer;">1x</button>
-                    <div id="metric-total-mcap" style="margin-left:auto;font-size:0.9rem;color:#64748b;">Combined: <strong style="color:#0f172a;">$2.8T</strong></div>
-                </div>
+                <!-- Two-column layout: DC dot map + bar chart -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;align-items:start;">
 
-                <!-- Bar chart -->
-                <div style="position:relative;height:340px;width:100%;">
-                    <canvas id="chart-market"></canvas>
+                    <!-- Left: Dot map -->
+                    <div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+                            <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;color:#64748b;font-weight:600;">Hyperscale Data Centers Worldwide</div>
+                            <div id="metric-ww-dc" style="font-size:1.4rem;font-weight:800;color:#2563eb;line-height:1;">504</div>
+                        </div>
+                        <div id="dc-dot-map" style="height:310px;border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;background:#1e293b;"></div>
+                        <div style="font-size:0.72rem;color:#94a3b8;margin-top:5px;text-align:center;">● = 20 hyperscale facilities &nbsp;|&nbsp; Dot clusters show geographic concentration</div>
+                    </div>
+
+                    <!-- Right: Market cap bar chart -->
+                    <div>
+                        <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;color:#64748b;font-weight:600;margin-bottom:0.5rem;">Company Market Cap / Valuation</div>
+                        <div style="position:relative;height:310px;width:100%;">
+                            <canvas id="chart-market"></canvas>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -1781,11 +1805,120 @@
         // ============================================================
 
         // ============================================================
-        // PANEL 4: DATA CENTERS ↔ MARKET CAP (SIMPLE BAR CHART RACE)
+        // PANEL 4: DATA CENTERS dot map + BAR CHART RACE
         // ============================================================
         async function initMarketChart() {
             Chart.defaults.color = chartColors.text;
             Chart.defaults.font.family = 'Inter, sans-serif';
+
+            // Geographic clusters for dot placement (lat, lng, weight)
+            const DC_CLUSTERS = [
+                // United States
+                { lat: 38.9, lng: -77.4,  w: 12 }, // N.Virginia
+                { lat: 32.9, lng: -97.0,  w: 8  }, // Dallas-Fort Worth
+                { lat: 37.4, lng: -122.0, w: 6  }, // Silicon Valley
+                { lat: 33.7, lng: -84.4,  w: 5  }, // Atlanta
+                { lat: 41.8, lng: -87.8,  w: 5  }, // Chicago
+                { lat: 40.0, lng: -83.0,  w: 5  }, // Columbus Ohio
+                { lat: 33.5, lng: -112.0, w: 4  }, // Phoenix
+                { lat: 45.5, lng: -122.8, w: 4  }, // Portland-Hillsboro
+                { lat: 40.7, lng: -74.0,  w: 3  }, // New York City
+                { lat: 47.5, lng: -120.5, w: 3  }, // Quincy WA
+                { lat: 41.6, lng: -93.6,  w: 3  }, // Des Moines Iowa
+                { lat: 30.2, lng: -97.8,  w: 3  }, // Austin TX
+                // Europe
+                { lat: 50.1, lng:  8.7,  w: 6  }, // Frankfurt
+                { lat: 51.5, lng: -0.1,  w: 5  }, // London
+                { lat: 52.3, lng:  4.9,  w: 4  }, // Amsterdam
+                { lat: 48.9, lng:  2.3,  w: 4  }, // Paris
+                { lat: 53.3, lng: -6.3,  w: 3  }, // Dublin
+                { lat: 59.3, lng: 18.1,  w: 3  }, // Stockholm
+                { lat: 60.2, lng: 24.9,  w: 2  }, // Helsinki
+                // Asia-Pacific
+                { lat: 35.7, lng: 139.7, w: 5  }, // Tokyo
+                { lat: 31.2, lng: 121.5, w: 4  }, // Shanghai
+                { lat: 39.9, lng: 116.4, w: 4  }, // Beijing
+                { lat:  1.4, lng: 103.8, w: 3  }, // Singapore
+                { lat: -33.9,lng: 151.2, w: 3  }, // Sydney
+                { lat: 37.6, lng: 127.0, w: 3  }, // Seoul
+                { lat: 19.1, lng:  72.9, w: 3  }, // Mumbai
+                { lat:  3.1, lng: 101.7, w: 2  }, // Kuala Lumpur
+                { lat: -37.8,lng: 144.9, w: 2  }, // Melbourne
+                // LatAm + MEA
+                { lat: -23.6,lng: -46.7, w: 3  }, // Sao Paulo
+                { lat: 25.2, lng:  55.3, w: 2  }, // Dubai
+                { lat: -26.2,lng:  28.0, w: 1  }, // Johannesburg
+            ];
+            const totalWeight = DC_CLUSTERS.reduce((s, c) => s + c.w, 0);
+
+            // Pre-generate stable dot positions (seeded pseudo-random so slider is reproducible)
+            function seededRand(seed) {
+                const x = Math.sin(seed + 1) * 10000;
+                return x - Math.floor(x);
+            }
+
+            function generateAllDots(maxCount) {
+                const numDots = Math.floor(maxCount / 20);
+                const dots = [];
+                DC_CLUSTERS.forEach((c, ci) => {
+                    const allocated = Math.max(1, Math.round(numDots * c.w / totalWeight));
+                    for (let i = 0; i < allocated; i++) {
+                        const seed = ci * 1000 + i;
+                        const r1 = seededRand(seed * 7 + 1);
+                        const r2 = seededRand(seed * 7 + 3);
+                        const r3 = seededRand(seed * 7 + 5);
+                        const radius = r1 * 2.2;
+                        const angle  = r2 * 2 * Math.PI;
+                        dots.push({
+                            lat: c.lat + radius * Math.sin(angle),
+                            lng: c.lng + radius * Math.cos(angle) / Math.max(0.3, Math.cos(c.lat * Math.PI / 180)),
+                            order: Math.floor(r3 * 100000)
+                        });
+                    }
+                });
+                dots.sort((a, b) => a.order - b.order);
+                return dots.slice(0, numDots);
+            }
+
+            const allDots = generateAllDots(1580); // max hyperscale count
+
+            // Init dot map (non-interactive, dark basemap)
+            const dcMap = L.map('dc-dot-map', {
+                zoomControl: false, scrollWheelZoom: false, dragging: false,
+                doubleClickZoom: false, keyboard: false, tap: false
+            }).setView([22, 10], 1);
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+                maxZoom: 4, attribution: ''
+            }).addTo(dcMap);
+
+            const dotLayer = L.layerGroup().addTo(dcMap);
+            let activeDots = [];
+
+            function updateDotMap(hyperscaleCount) {
+                const targetDots = Math.min(Math.floor(hyperscaleCount / 20), allDots.length);
+                const currentDots = activeDots.length;
+
+                if (targetDots < currentDots) {
+                    // Slider moved backward — trim dots
+                    const removed = activeDots.splice(targetDots);
+                    removed.forEach(m => dotLayer.removeLayer(m));
+                } else {
+                    // Add new dots with pop animation
+                    for (let i = currentDots; i < targetDots; i++) {
+                        const d = allDots[i];
+                        const marker = L.circleMarker([d.lat, d.lng], {
+                            radius: 4,
+                            fillColor: '#60a5fa',
+                            color: '#1d4ed8',
+                            weight: 1,
+                            fillOpacity: 0.85
+                        });
+                        dotLayer.addLayer(marker);
+                        activeDots.push(marker);
+                    }
+                }
+            }
 
             try {
                 const [marketData, openaiData, anthropicData, growthData] = await Promise.all([
@@ -1806,24 +1939,25 @@
                 });
 
                 const companies = [
-                    { key: 'NVDA', name: 'NVIDIA', color: '#76b900' },
-                    { key: 'MSFT', name: 'Microsoft', color: '#00a4ef' },
-                    { key: 'GOOGL', name: 'Alphabet', color: '#ea4335' },
-                    { key: 'AMZN', name: 'Amazon', color: '#ff9900' },
-                    { key: 'META', name: 'Meta', color: '#1877f2' },
-                    { key: 'OPENAI', name: 'OpenAI', color: '#7c3aed', isPrivate: true },
+                    { key: 'NVDA',      name: 'NVIDIA',    color: '#76b900' },
+                    { key: 'MSFT',      name: 'Microsoft', color: '#00a4ef' },
+                    { key: 'GOOGL',     name: 'Alphabet',  color: '#ea4335' },
+                    { key: 'AMZN',      name: 'Amazon',    color: '#ff9900' },
+                    { key: 'META',      name: 'Meta',      color: '#1877f2' },
+                    { key: 'OPENAI',    name: 'OpenAI',    color: '#7c3aed', isPrivate: true },
                     { key: 'ANTHROPIC', name: 'Anthropic', color: '#cc785c', isPrivate: true }
                 ];
 
                 function interpPrivate(data, date) {
+                    const valKey = data[0] && data[0].valuation_b !== undefined ? 'valuation_b' : 'valuation';
                     const past = data.filter(d => d.date <= date);
                     if (!past.length) return 0;
                     const latest = past[past.length - 1];
                     const next = data.find(d => d.date > date);
-                    if (!next) return latest.valuation;
+                    if (!next) return latest[valKey] || 0;
                     const t0 = new Date(latest.date + '-01'), t1 = new Date(next.date + '-01'), tc = new Date(date + '-01');
                     const p = Math.max(0, Math.min(1, (tc - t0) / (t1 - t0)));
-                    return latest.valuation + (next.valuation - latest.valuation) * p;
+                    return (latest[valKey] || 0) + ((next[valKey] || 0) - (latest[valKey] || 0)) * p;
                 }
 
                 const ctx = document.getElementById('chart-market').getContext('2d');
@@ -1850,14 +1984,12 @@
                             legend: { display: false },
                             tooltip: {
                                 backgroundColor: 'rgba(255,255,255,0.96)',
-                                borderColor: '#e2e8f0',
-                                borderWidth: 1,
-                                titleColor: '#0f172a',
-                                bodyColor: '#1e293b',
+                                borderColor: '#e2e8f0', borderWidth: 1,
+                                titleColor: '#0f172a', bodyColor: '#1e293b',
                                 callbacks: {
                                     label: (c) => {
                                         const v = c.parsed.x;
-                                        return v >= 1000 ? `$${(v/1000).toFixed(1)}T` : v >= 1 ? `$${Math.round(v)}B` : `$${Math.round(v*1000)}M`;
+                                        return v >= 1000 ? '$' + (v/1000).toFixed(1) + 'T' : v >= 1 ? '$' + Math.round(v) + 'B' : '$' + Math.round(v*1000) + 'M';
                                     }
                                 }
                             }
@@ -1865,13 +1997,8 @@
                         scales: {
                             x: {
                                 grid: { color: '#f1f5f9' },
-                                ticks: {
-                                    color: '#64748b',
-                                    font: { size: 11 },
-                                    callback: v => v >= 1000 ? '$' + (v/1000).toFixed(1) + 'T' : '$' + v + 'B'
-                                },
-                                min: 0,
-                                max: 4000
+                                ticks: { color: '#64748b', font: { size: 11 }, callback: v => v >= 1000 ? '$' + (v/1000).toFixed(1) + 'T' : '$' + v + 'B' },
+                                min: 0, max: 4000
                             },
                             y: {
                                 grid: { display: false },
@@ -1899,13 +2026,12 @@
                     }]
                 });
 
-                // DOM elements
-                const slider = document.getElementById('timeline-slider');
+                const slider    = document.getElementById('timeline-slider');
                 const dateLabel = document.getElementById('timeline-current-date');
-                const dcLabel = document.getElementById('metric-ww-dc');
+                const dcLabel   = document.getElementById('metric-ww-dc');
                 const mcapLabel = document.getElementById('metric-total-mcap');
-                const btnPlay = document.getElementById('btn-play-pause');
-                const btnSpeed = document.getElementById('btn-speed');
+                const btnPlay   = document.getElementById('btn-play-pause');
+                const btnSpeed  = document.getElementById('btn-speed');
 
                 slider.max = marketData.length - 1;
                 let idx = 0, playing = false, timer = null;
@@ -1919,19 +2045,21 @@
                     const row = marketData[idx], date = row.date;
                     const [yr, mo] = date.split('-').map(Number);
 
-                    dateLabel.textContent = `${months[mo-1]} ${yr}`;
-                    dcLabel.textContent = worldwideDC[idx].toLocaleString();
+                    dateLabel.textContent = months[mo-1] + ' ' + yr;
+                    const wwDC = worldwideDC[idx];
+                    dcLabel.textContent = wwDC.toLocaleString();
+                    updateDotMap(wwDC);
 
                     const vals = [row.NVDA, row.MSFT, row.GOOGL, row.AMZN, row.META,
                                   interpPrivate(openaiData, date), interpPrivate(anthropicData, date)];
                     const total = vals[0] + vals[1] + vals[2] + vals[3] + vals[4];
-                    mcapLabel.innerHTML = `Combined: <strong style="color:#0f172a;">${total >= 1000 ? '$'+(total/1000).toFixed(1)+'T' : '$'+Math.round(total)+'B'}</strong>`;
+                    mcapLabel.innerHTML = 'Combined: <strong style="color:#0f172a;">' +
+                        (total >= 1000 ? '$' + (total/1000).toFixed(1) + 'T' : '$' + Math.round(total) + 'B') + '</strong>';
 
                     const sorted = companies.map((c, j) => ({ ...c, v: vals[j] })).sort((a, b) => b.v - a.v);
-                    chart.data.labels = sorted.map(c => c.isPrivate ? c.name + ' ⬥' : c.name);
+                    chart.data.labels = sorted.map(c => c.isPrivate ? c.name + ' \u29c6' : c.name);
                     chart.data.datasets[0].data = sorted.map(c => Math.round(c.v * 10) / 10);
                     chart.data.datasets[0].backgroundColor = sorted.map(c => c.color);
-                    const mx = 4000; // Fixed scale so bars visually show the full growth
                     chart.update();
                 }
 
@@ -1940,10 +2068,10 @@
                 function togglePlay() {
                     if (playing) {
                         clearInterval(timer); playing = false;
-                        btnPlay.textContent = '▶ Play'; btnPlay.style.background = '#2563eb';
+                        btnPlay.textContent = '\u25b6 Play'; btnPlay.style.background = '#2563eb';
                     } else {
                         playing = true;
-                        btnPlay.textContent = '⏸ Pause'; btnPlay.style.background = '#059669';
+                        btnPlay.textContent = '\u23f8 Pause'; btnPlay.style.background = '#059669';
                         if (idx >= marketData.length - 1) idx = 0;
                         timer = setInterval(() => {
                             idx++;
@@ -1957,15 +2085,19 @@
                 btnSpeed.addEventListener('click', () => {
                     si = (si + 1) % speeds.length;
                     btnSpeed.textContent = speedNames[si];
-                    if (playing) { clearInterval(timer); timer = setInterval(() => { idx++; if (idx >= marketData.length) togglePlay(); else update(idx); }, speeds[si]); }
+                    if (playing) {
+                        clearInterval(timer);
+                        timer = setInterval(() => { idx++; if (idx >= marketData.length) togglePlay(); else update(idx); }, speeds[si]);
+                    }
                 });
 
                 update(0);
+                setTimeout(() => { dcMap.invalidateSize(); }, 300);
 
             } catch(e) {
                 console.error('Market chart error:', e);
             }
         }
+
     </script>
-</body>
-</html>
+
