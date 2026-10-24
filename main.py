@@ -52,12 +52,6 @@ us_facilities['state_abbr'] = us_facilities['state_abbr'].fillna(
     state_suffix.where(state_suffix.isin(STATE_INFO))
 )
 counts = us_facilities['state_abbr'].value_counts()
-mapped_count = int(us_facilities['state_abbr'].notna().sum())
-unmapped_count = len(us_facilities) - mapped_count
-coverage_note = (
-    f'{mapped_count:,} of {len(us_facilities):,} US records assigned to a state/area; '
-    f'{unmapped_count:,} with missing or unclear state excluded.'
-)
 
 df = pd.DataFrame([
     {
@@ -330,8 +324,9 @@ map_metric = alt.param(
             'Land price',
             'Commercial electricity price',
             'Population',
+            'County unemployment rate',
         ],
-        name='Map color: ',
+        name='Map metric: ',
     ),
 )
 metric_value_expression = (
@@ -342,6 +337,7 @@ metric_value_expression = (
 )
 metric_color_scheme = alt.ExprRef(
     expr=(
+        "map_metric === 'County unemployment rate' ? 'oranges' : "
         "map_metric === 'Land price' ? 'greens' : "
         "map_metric === 'Commercial electricity price' ? 'oranges' : "
         "map_metric === 'Population' ? 'purples' : 'blues'"
@@ -351,6 +347,7 @@ metric_color = alt.Color(
     'metric_value:Q',
     title='Selected map metric',
     scale=alt.Scale(scheme=metric_color_scheme),
+    legend=None,
 )
 
 # Load the US states topology and select states by their FIPS IDs.
@@ -360,6 +357,8 @@ click = alt.selection_point(
     fields=['state_id'],
     empty='all',
     clear='dblclick',
+    on='click[!event.ctrlKey || length(data("selected_state_store")) < 4]',
+    toggle='event.ctrlKey',
 )
 
 state_layer = alt.Chart(states).mark_geoshape(
@@ -409,8 +408,97 @@ state_layer = alt.Chart(states).mark_geoshape(
     ),
 ).transform_calculate(
     metric_value=metric_value_expression,
-).add_params(
-    click
+).transform_filter(
+    "map_metric !== 'County unemployment rate'"
+)
+
+county_path = Path(__file__).resolve().parent / 'data' / 'laucnty25.csv'
+county_unemployment = pd.read_csv(
+    county_path,
+    sep=';',
+    skiprows=1,
+    usecols=[
+        'State FIPS Code',
+        'County FIPS Code',
+        'County Name/State Abbreviation',
+        'Unemployment Rate (%)',
+    ],
+    dtype='string',
+)
+county_unemployment = county_unemployment.loc[
+    county_unemployment['State FIPS Code'].str.fullmatch(r'\d{2}', na=False)
+    & county_unemployment['County FIPS Code'].str.fullmatch(r'\d{3}', na=False)
+].copy()
+county_unemployment['state_id'] = pd.to_numeric(
+    county_unemployment['State FIPS Code'],
+    errors='raise',
+)
+county_unemployment = county_unemployment.loc[
+    county_unemployment['state_id'].isin(df['state_id'])
+].copy()
+county_unemployment['county_id'] = pd.to_numeric(
+    county_unemployment['State FIPS Code'] + county_unemployment['County FIPS Code'],
+    errors='raise',
+)
+county_unemployment['unemployment_rate'] = pd.to_numeric(
+    county_unemployment['Unemployment Rate (%)'].str.strip().str.replace(
+        ',', '.', regex=False
+    ),
+    errors='raise',
+)
+county_unemployment['unemployment_percentile'] = (
+    county_unemployment['unemployment_rate'].rank(method='average', pct=True) * 100
+)
+county_unemployment = county_unemployment.rename(columns={
+    'County Name/State Abbreviation': 'county_name',
+})
+county_unemployment = county_unemployment[
+    [
+        'county_id',
+        'state_id',
+        'county_name',
+        'unemployment_rate',
+        'unemployment_percentile',
+    ]
+]
+if county_unemployment['county_id'].duplicated().any():
+    raise ValueError(f'Duplicate county FIPS codes found in {county_path}')
+if county_unemployment['unemployment_rate'].isna().any():
+    raise ValueError(f'Missing county unemployment rates found in {county_path}')
+
+counties = alt.topo_feature(data.us_10m.url, 'counties')
+county_layer = alt.Chart(counties).mark_geoshape(
+    stroke='white',
+    strokeWidth=0.25,
+).encode(
+    color=alt.Color(
+        'unemployment_percentile:Q',
+        title='Unemployment percentile (US counties)',
+        scale=alt.Scale(domain=[0, 100], scheme='oranges'),
+    ),
+    tooltip=[
+        alt.Tooltip('county_name:N', title='County'),
+        alt.Tooltip('unemployment_rate:Q', title='Unemployment rate (%)', format='.1f'),
+        alt.Tooltip(
+            'unemployment_percentile:Q',
+            title='US county percentile',
+            format='.0f',
+        ),
+    ],
+).transform_lookup(
+    lookup='id',
+    from_=alt.LookupData(
+        county_unemployment,
+        'county_id',
+        [
+            'state_id',
+            'county_name',
+            'unemployment_rate',
+            'unemployment_percentile',
+        ],
+    ),
+).transform_filter(
+    "map_metric === 'County unemployment rate'"
 )
 
 detail_state_layer = alt.Chart(states).mark_geoshape(
@@ -537,51 +625,217 @@ detail_point_layer = alt.Chart(points_df).mark_circle(
     empty=False,
 )
 
-map_chart = alt.layer(state_layer, point_layer).project(
+map_chart = alt.layer(state_layer, county_layer, point_layer).add_params(
+    click
+).project(
     type='albersUsa',
 ).properties(
-    width=600,
-    height=400,
-    title=alt.TitleParams(
-        text='US Overview (Click a State to View Details)',
-        subtitle=(
-            f'{coverage_note} Click a state to populate the detail map. '
-            f'Choose a map color metric above. Land values are USDA agricultural land '
-            f'with buildings ($/acre), {latest_land_price_year}; Alaska and Hawaii use '
-            'clearly labeled proxy estimates. Electricity uses commercial cents/kWh rates '
-            f'from {latest_electricity_year} only; industrial prices are excluded. '
-            f'Population is the Census Bureau {population_year} estimate. '
-            'Double-click to clear the selection.'
-        ),
-    ),
+    width=1150,
+    height=560,
+    title='US Overview (Select metric; click state/county, Ctrl+click up to 4 states)',
 )
 
 detail_map = alt.layer(detail_state_layer, detail_point_layer).project(
     type='mercator',
 ).properties(
-    width=600,
-    height=400,
-    title='Selected State Detail (select a state in the overview)',
+    width=575,
+    height=420,
+    title='Selected State(s) Detail',
 )
 
-bar_chart = alt.Chart(df).mark_bar().encode(
-    x=alt.X('state_name:N', sort='-y', title='State', axis=alt.Axis(labelAngle=-45)),
-    y=alt.Y('data_center_count:Q', title='Number of Data Centers'),
-    color=alt.Color(
-        'data_center_count:Q',
-        title='Data centers',
-        scale=alt.Scale(scheme='blues'),
+parallel_dimensions = [
+    ('State', None),
+    ('Data centers', 'data_center_count'),
+    ('Land price ($/acre)', 'land_price'),
+    ('Electricity (cents/kWh)', 'electricity_price'),
+    ('Population', 'population'),
+]
+parallel_records = []
+parallel_axis_records = []
+parallel_tick_records = []
+state_count = len(df)
+state_positions = {
+    row['state_name']: 0.98 - state_index * 0.96 / max(state_count - 1, 1)
+    for state_index, (_, row) in enumerate(df.iterrows())
+}
+
+for dimension_index, (dimension, field) in enumerate(parallel_dimensions):
+    parallel_axis_records.append({
+        'axis_x': dimension_index,
+        'dimension': dimension,
+    })
+    if field is None:
+        for state_name, position in state_positions.items():
+            parallel_records.append({
+                'state_id': next(
+                    state_id for state_id, name in state_name_by_id.items()
+                    if name == state_name
+                ),
+                'state_name': state_name,
+                'axis_x': dimension_index,
+                'normalized_value': position,
+                'data_center_count': None,
+                'land_price': None,
+                'land_price_note': None,
+                'electricity_price': None,
+                'population': None,
+            })
+        continue
+
+    minimum = float(df[field].min())
+    maximum = float(df[field].max())
+    if pd.isna(minimum) or pd.isna(maximum):
+        raise ValueError(f'Missing values found for parallel-coordinate dimension {dimension}')
+    value_range = maximum - minimum
+    for _, row in df.iterrows():
+        value = float(row[field])
+        normalized_value = (
+            0.02 + 0.96 * (value - minimum) / value_range
+            if value_range
+            else 0.5
+        )
+        parallel_records.append({
+            'state_id': int(row['state_id']),
+            'state_name': row['state_name'],
+            'axis_x': dimension_index,
+            'normalized_value': normalized_value,
+            'data_center_count': int(row['data_center_count']),
+            'land_price': float(row['land_price']),
+            'land_price_note': row['land_price_note'],
+            'electricity_price': float(row['electricity_price']),
+            'population': int(row['population']),
+        })
+        for tick_fraction in (0, 0.5, 1):
+            tick_value = minimum + value_range * tick_fraction
+            if field == 'land_price':
+                tick_label = f'${tick_value / 1000:,.0f}k'
+            elif field == 'electricity_price':
+                tick_label = f'{tick_value:.1f}'
+            else:
+                tick_label = f'{tick_value:,.0f}'
+            parallel_tick_records.append({
+                'axis_x': dimension_index,
+                'tick_x_start': dimension_index - 0.035,
+                'tick_x_end': dimension_index + 0.035,
+                'normalized_value': 0.02 + 0.96 * tick_fraction,
+                'tick_label': tick_label,
+            })
+
+parallel_data = pd.DataFrame(parallel_records)
+parallel_axes = pd.DataFrame(parallel_axis_records)
+parallel_ticks = pd.DataFrame(parallel_tick_records)
+parallel_state_labels = pd.DataFrame([
+    {'state_name': state_name, 'normalized_value': position}
+    for state_name, position in state_positions.items()
+])
+parallel_x_scale = alt.Scale(domain=[-0.6, 4.1], nice=False)
+parallel_y_scale = alt.Scale(domain=[-0.04, 1.1], nice=False)
+
+parallel_lines = alt.Chart(parallel_data).mark_line(
+    opacity=0.28,
+).encode(
+    x=alt.X('axis_x:Q', scale=parallel_x_scale, axis=None),
+    y=alt.Y('normalized_value:Q', scale=parallel_y_scale, axis=None),
+    detail='state_name:N',
+    order=alt.Order('axis_x:Q'),
+    color=alt.condition(
+        click,
+        alt.Color(
+            'state_name:N',
+            title='Selected state',
+            scale=alt.Scale(scheme='tableau20'),
+        ),
+        alt.value('#4b8b78'),
+        empty=False,
+    ),
+    size=alt.condition(
+        click,
+        alt.value(6),
+        alt.value(1.5),
+        empty=False,
     ),
     tooltip=[
+        alt.Tooltip('state_id:Q', title='State ID'),
         alt.Tooltip('state_name:N', title='State'),
         alt.Tooltip('data_center_count:Q', title='Data centers', format=','),
+        alt.Tooltip('land_price:Q', title='Land value ($/acre)', format='$,.0f'),
+        alt.Tooltip('land_price_note:N', title='Land value source'),
+        alt.Tooltip('electricity_price:Q', title='Commercial electricity (cents/kWh)', format='.2f'),
+        alt.Tooltip('population:Q', title=f'Population ({population_year})', format=','),
     ],
 ).transform_filter(
     click
+)
+parallel_axis_lines = alt.Chart(parallel_axes).mark_rule(
+    color='#9ba7a3',
+    strokeWidth=1,
+).encode(
+    x=alt.X('axis_x:Q', scale=parallel_x_scale, axis=None),
+    y=alt.Y('axis_start:Q', scale=parallel_y_scale, axis=None),
+    y2='axis_end:Q',
+).transform_calculate(
+    axis_start='0.02',
+    axis_end='0.98',
+)
+parallel_tick_marks = alt.Chart(parallel_ticks).mark_rule(
+    color='#9ba7a3',
+    strokeWidth=1,
+).encode(
+    x=alt.X('tick_x_start:Q', scale=parallel_x_scale, axis=None),
+    x2='tick_x_end:Q',
+    y=alt.Y('normalized_value:Q', scale=parallel_y_scale, axis=None),
+)
+parallel_tick_labels = alt.Chart(parallel_ticks).mark_text(
+    align='left',
+    baseline='middle',
+    dx=6,
+    fontSize=9,
+    color='#626d69',
+).encode(
+    x=alt.X('axis_x:Q', scale=parallel_x_scale, axis=None),
+    y=alt.Y('normalized_value:Q', scale=parallel_y_scale, axis=None),
+    text='tick_label:N',
+)
+parallel_dimension_labels = alt.Chart(parallel_axes).mark_text(
+    align='center',
+    baseline='bottom',
+    fontSize=11,
+    fontWeight='bold',
+    color='#333333',
+).encode(
+    x=alt.X('axis_x:Q', scale=parallel_x_scale, axis=None),
+    y=alt.Y(datum=1.04, scale=parallel_y_scale, axis=None),
+    text='dimension:N',
+)
+parallel_state_labels_chart = alt.Chart(parallel_state_labels).mark_text(
+    align='right',
+    baseline='middle',
+    dx=-8,
+    fontSize=8,
+    color='#4c5552',
+).encode(
+    x=alt.X(datum=-0.02, scale=parallel_x_scale, axis=None),
+    y=alt.Y('normalized_value:Q', scale=parallel_y_scale, axis=None),
+    text='state_name:N',
+)
+parallel_chart = alt.layer(
+    parallel_lines,
+    parallel_axis_lines,
+    parallel_tick_marks,
+    parallel_tick_labels,
+    parallel_dimension_labels,
+    parallel_state_labels_chart,
 ).properties(
-    width=600,
+    width=1150,
     height=500,
-    title=alt.TitleParams(text='Data Centers by State', subtitle=coverage_note),
+    title=alt.TitleParams(
+        text='Data Centers by State',
+        subtitle=(
+            f'States are alphabetical; numeric axes are scaled independently. '
+            f'Latest data: land {latest_land_price_year}, electricity {latest_electricity_year}, '
+            f'population {population_year}. Ctrl+click up to 4 states to compare; double-click the map to clear.'
+        ),
+    ),
 )
 
 radar_x_scale = alt.Scale(domain=[-1.35, 1.35], nice=False, zero=False)
@@ -638,6 +892,12 @@ radar_line = alt.Chart(radar_line_df).mark_line(
 ).encode(
     x=alt.X('x:Q', scale=radar_x_scale, axis=None),
     y=alt.Y('y:Q', scale=radar_y_scale, axis=None),
+    color=alt.Color(
+        'state_name:N',
+        title='State',
+        scale=alt.Scale(scheme='tableau20'),
+    ),
+    detail='state_name:N',
     order=alt.Order('category_order:Q'),
     tooltip=[
         alt.Tooltip('state_name:N', title='State'),
@@ -657,14 +917,46 @@ radar_chart = alt.layer(
     radar_labels,
     radar_line,
 ).properties(
-    width=500,
-    height=500,
+    width=575,
+    height=420,
     title=alt.TitleParams(
-        text='Selected State Profile',
-        subtitle='Percentile rank (0 center to 100 outer ring); higher means a higher value.',
+        text='Selected State Profiles',
+        subtitle='Percentile rank (0 center to 100 outer ring); compare up to four selected states.',
     ),
 )
 
-dashboard = (map_chart | detail_map) & (bar_chart | radar_chart)
-dashboard = dashboard.add_params(show_points, map_metric).configure_view(strokeWidth=0)
-dashboard.save(Path(__file__).resolve().parent / 'data_center_dashboard.html')
+dashboard = (
+    alt.vconcat(map_chart, parallel_chart, spacing=20)
+    | alt.vconcat(detail_map, radar_chart, spacing=20)
+).add_params(
+    show_points,
+    map_metric,
+).configure_view(
+    strokeWidth=0,
+)
+dashboard_path = Path(__file__).resolve().parent / 'data_center_dashboard.html'
+dashboard.save(dashboard_path)
+dashboard_html = dashboard_path.read_text(encoding='utf-8')
+style_marker = '      display: flex;\n'
+if style_marker not in dashboard_html:
+    raise ValueError('Could not find the dashboard container style to center the visualization')
+dashboard_html = dashboard_html.replace(
+    '  <style>\n',
+    '  <style>\n'
+    '    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }\n'
+    '    body { display: flex; align-items: center; justify-content: center; }\n',
+    1,
+)
+dashboard_path.write_text(
+    dashboard_html.replace(
+        style_marker,
+        f'{style_marker}      justify-content: center;\n'
+        '      align-items: center;\n'
+        '      width: 100vw;\n'
+        '      height: 100vh;\n'
+        '      overflow: hidden;\n'
+        '      zoom: 1.3;\n',
+        1,
+    ),
+    encoding='utf-8',
+)
