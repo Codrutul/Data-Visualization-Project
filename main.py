@@ -1,5 +1,6 @@
-from pathlib import Path
+import json
 import math
+from pathlib import Path
 
 import altair as alt
 import pandas as pd
@@ -183,7 +184,73 @@ if missing_population_ids:
         f'Missing population estimates in {population_path}: {missing_population_names}'
     )
 
-radar_categories = ['Data centers', 'Land price', 'Electricity', 'Population']
+county_path = Path(__file__).resolve().parent / 'data' / 'laucnty25.csv'
+county_unemployment = pd.read_csv(
+    county_path,
+    sep=';',
+    skiprows=1,
+    usecols=[
+        'State FIPS Code',
+        'County FIPS Code',
+        'County Name/State Abbreviation',
+        'Labor Force',
+        'Unemployed',
+        'Unemployment Rate (%)',
+    ],
+    dtype='string',
+)
+county_unemployment = county_unemployment.loc[
+    county_unemployment['State FIPS Code'].str.fullmatch(r'\d{2}', na=False)
+    & county_unemployment['County FIPS Code'].str.fullmatch(r'\d{3}', na=False)
+].copy()
+county_unemployment['state_id'] = pd.to_numeric(
+    county_unemployment['State FIPS Code'],
+    errors='raise',
+)
+county_unemployment = county_unemployment.loc[
+    county_unemployment['state_id'].isin(df['state_id'])
+].copy()
+county_unemployment['county_id'] = pd.to_numeric(
+    county_unemployment['State FIPS Code'] + county_unemployment['County FIPS Code'],
+    errors='raise',
+)
+county_unemployment['unemployment_rate'] = pd.to_numeric(
+    county_unemployment['Unemployment Rate (%)'].str.strip().str.replace(
+        ',', '.', regex=False
+    ),
+    errors='raise',
+)
+county_unemployment['unemployment_percentile'] = (
+    county_unemployment['unemployment_rate'].rank(method='average', pct=True) * 100
+)
+for column in ('Labor Force', 'Unemployed'):
+    county_unemployment[column] = pd.to_numeric(
+        county_unemployment[column].str.strip().str.replace('.', '', regex=False),
+        errors='raise',
+    )
+county_unemployment = county_unemployment.rename(columns={
+    'County Name/State Abbreviation': 'county_name',
+})
+if county_unemployment['county_id'].duplicated().any():
+    raise ValueError(f'Duplicate county FIPS codes found in {county_path}')
+if county_unemployment[
+    ['unemployment_rate', 'unemployment_percentile', 'Labor Force', 'Unemployed']
+].isna().any().any():
+    raise ValueError(f'Missing county unemployment data found in {county_path}')
+
+state_unemployment = county_unemployment.groupby('state_id').agg(
+    state_labor_force=('Labor Force', 'sum'),
+    state_unemployed=('Unemployed', 'sum'),
+)
+state_unemployment['unemployment_rate'] = (
+    state_unemployment['state_unemployed'] / state_unemployment['state_labor_force'] * 100
+)
+state_unemployment = state_unemployment[['unemployment_rate']].reset_index()
+if set(state_unemployment['state_id']) != set(df['state_id']):
+    raise ValueError('County unemployment data does not cover every state in the dashboard')
+df = df.merge(state_unemployment, on='state_id', how='left', validate='one_to_one')
+
+radar_categories = ['Data centers', 'Land price', 'Electricity', 'Population', 'Unemployment']
 radar_metrics = [
     ('Data centers', 'data_center_count', 'facilities', None),
     (
@@ -199,6 +266,7 @@ radar_metrics = [
         None,
     ),
     ('Population', 'population', f'residents ({population_year})', None),
+    ('Unemployment', 'unemployment_rate', '%', None),
 ]
 radar_records = []
 for category_order, (category, field, unit, note_field) in enumerate(radar_metrics):
@@ -213,7 +281,12 @@ for category_order, (category, field, unit, note_field) in enumerate(radar_metri
             value_label = 'No data'
             value_note = 'No source value; shown at the chart center.'
         else:
-            value_label = f'{value:,.0f} {unit}' if field != 'electricity_price' else f'{value:.2f} {unit}'
+            if field == 'electricity_price':
+                value_label = f'{value:.2f} {unit}'
+            elif field == 'unemployment_rate':
+                value_label = f'{value:.2f}{unit}'
+            else:
+                value_label = f'{value:,.0f} {unit}'
             value_note = row[note_field] if note_field else 'Reported value'
         radar_records.append({
             'state_id': int(row['state_id']),
@@ -318,16 +391,6 @@ show_points = alt.param(
 map_metric = alt.param(
     name='map_metric',
     value='Data center count',
-    bind=alt.binding_select(
-        options=[
-            'Data center count',
-            'Land price',
-            'Commercial electricity price',
-            'Population',
-            'County unemployment rate',
-        ],
-        name='Map metric: ',
-    ),
 )
 metric_value_expression = (
     "map_metric === 'Land price' ? datum.land_price : "
@@ -389,6 +452,11 @@ state_layer = alt.Chart(states).mark_geoshape(
             title=f'Population estimate ({population_year})',
             format=',',
         ),
+        alt.Tooltip(
+            'unemployment_rate:Q',
+            title='Weighted unemployment rate (2025)',
+            format='.2f',
+        ),
     ],
 ).transform_lookup(
     lookup='id',
@@ -404,6 +472,7 @@ state_layer = alt.Chart(states).mark_geoshape(
             'land_price_note',
             'electricity_price',
             'population',
+            'unemployment_rate',
         ],
     ),
 ).transform_calculate(
@@ -411,60 +480,6 @@ state_layer = alt.Chart(states).mark_geoshape(
 ).transform_filter(
     "map_metric !== 'County unemployment rate'"
 )
-
-county_path = Path(__file__).resolve().parent / 'data' / 'laucnty25.csv'
-county_unemployment = pd.read_csv(
-    county_path,
-    sep=';',
-    skiprows=1,
-    usecols=[
-        'State FIPS Code',
-        'County FIPS Code',
-        'County Name/State Abbreviation',
-        'Unemployment Rate (%)',
-    ],
-    dtype='string',
-)
-county_unemployment = county_unemployment.loc[
-    county_unemployment['State FIPS Code'].str.fullmatch(r'\d{2}', na=False)
-    & county_unemployment['County FIPS Code'].str.fullmatch(r'\d{3}', na=False)
-].copy()
-county_unemployment['state_id'] = pd.to_numeric(
-    county_unemployment['State FIPS Code'],
-    errors='raise',
-)
-county_unemployment = county_unemployment.loc[
-    county_unemployment['state_id'].isin(df['state_id'])
-].copy()
-county_unemployment['county_id'] = pd.to_numeric(
-    county_unemployment['State FIPS Code'] + county_unemployment['County FIPS Code'],
-    errors='raise',
-)
-county_unemployment['unemployment_rate'] = pd.to_numeric(
-    county_unemployment['Unemployment Rate (%)'].str.strip().str.replace(
-        ',', '.', regex=False
-    ),
-    errors='raise',
-)
-county_unemployment['unemployment_percentile'] = (
-    county_unemployment['unemployment_rate'].rank(method='average', pct=True) * 100
-)
-county_unemployment = county_unemployment.rename(columns={
-    'County Name/State Abbreviation': 'county_name',
-})
-county_unemployment = county_unemployment[
-    [
-        'county_id',
-        'state_id',
-        'county_name',
-        'unemployment_rate',
-        'unemployment_percentile',
-    ]
-]
-if county_unemployment['county_id'].duplicated().any():
-    raise ValueError(f'Duplicate county FIPS codes found in {county_path}')
-if county_unemployment['unemployment_rate'].isna().any():
-    raise ValueError(f'Missing county unemployment rates found in {county_path}')
 
 counties = alt.topo_feature(data.us_10m.url, 'counties')
 county_layer = alt.Chart(counties).mark_geoshape(
@@ -475,6 +490,7 @@ county_layer = alt.Chart(counties).mark_geoshape(
         'unemployment_percentile:Q',
         title='Unemployment percentile (US counties)',
         scale=alt.Scale(domain=[0, 100], scheme='oranges'),
+        legend=None,
     ),
     tooltip=[
         alt.Tooltip('county_name:N', title='County'),
@@ -649,6 +665,7 @@ parallel_dimensions = [
     ('Land price ($/acre)', 'land_price'),
     ('Electricity (cents/kWh)', 'electricity_price'),
     ('Population', 'population'),
+    ('Unemployment rate (%)', 'unemployment_rate'),
 ]
 parallel_records = []
 parallel_axis_records = []
@@ -679,6 +696,7 @@ for dimension_index, (dimension, field) in enumerate(parallel_dimensions):
                 'land_price_note': None,
                 'electricity_price': None,
                 'population': None,
+                'unemployment_rate': None,
             })
         continue
 
@@ -704,6 +722,7 @@ for dimension_index, (dimension, field) in enumerate(parallel_dimensions):
             'land_price_note': row['land_price_note'],
             'electricity_price': float(row['electricity_price']),
             'population': int(row['population']),
+            'unemployment_rate': float(row['unemployment_rate']),
         })
         for tick_fraction in (0, 0.5, 1):
             tick_value = minimum + value_range * tick_fraction
@@ -711,6 +730,8 @@ for dimension_index, (dimension, field) in enumerate(parallel_dimensions):
                 tick_label = f'${tick_value / 1000:,.0f}k'
             elif field == 'electricity_price':
                 tick_label = f'{tick_value:.1f}'
+            elif field == 'unemployment_rate':
+                tick_label = f'{tick_value:.1f}%'
             else:
                 tick_label = f'{tick_value:,.0f}'
             parallel_tick_records.append({
@@ -728,7 +749,7 @@ parallel_state_labels = pd.DataFrame([
     {'state_name': state_name, 'normalized_value': position}
     for state_name, position in state_positions.items()
 ])
-parallel_x_scale = alt.Scale(domain=[-0.6, 4.1], nice=False)
+parallel_x_scale = alt.Scale(domain=[-0.6, 5.1], nice=False)
 parallel_y_scale = alt.Scale(domain=[-0.04, 1.1], nice=False)
 
 parallel_lines = alt.Chart(parallel_data).mark_line(
@@ -762,6 +783,11 @@ parallel_lines = alt.Chart(parallel_data).mark_line(
         alt.Tooltip('land_price_note:N', title='Land value source'),
         alt.Tooltip('electricity_price:Q', title='Commercial electricity (cents/kWh)', format='.2f'),
         alt.Tooltip('population:Q', title=f'Population ({population_year})', format=','),
+        alt.Tooltip(
+            'unemployment_rate:Q',
+            title='Weighted unemployment rate (2025, %)',
+            format='.2f',
+        ),
     ],
 ).transform_filter(
     click
@@ -833,7 +859,8 @@ parallel_chart = alt.layer(
         subtitle=(
             f'States are alphabetical; numeric axes are scaled independently. '
             f'Latest data: land {latest_land_price_year}, electricity {latest_electricity_year}, '
-            f'population {population_year}. Ctrl+click up to 4 states to compare; double-click the map to clear.'
+            f'population {population_year}, unemployment 2025. Ctrl+click up to 4 states to compare; '
+            f'double-click the map to clear.'
         ),
     ),
 )
@@ -937,20 +964,186 @@ dashboard = (
 dashboard_path = Path(__file__).resolve().parent / 'data_center_dashboard.html'
 dashboard.save(dashboard_path)
 dashboard_html = dashboard_path.read_text(encoding='utf-8')
+legend_metrics = {
+    'Data center count': {
+        'title': 'Data centers',
+        'scheme': 'blues',
+        'min': float(df['data_center_count'].min()),
+        'max': float(df['data_center_count'].max()),
+        'format': 'count',
+    },
+    'Land price': {
+        'title': f'Land value ($/acre, {latest_land_price_year})',
+        'scheme': 'greens',
+        'min': float(df['land_price'].min()),
+        'max': float(df['land_price'].max()),
+        'format': 'currency',
+    },
+    'Commercial electricity price': {
+        'title': f'Commercial electricity (cents/kWh, {latest_electricity_year})',
+        'scheme': 'oranges',
+        'min': float(df['electricity_price'].min()),
+        'max': float(df['electricity_price'].max()),
+        'format': 'decimal',
+    },
+    'Population': {
+        'title': f'Population ({population_year})',
+        'scheme': 'purples',
+        'min': float(df['population'].min()),
+        'max': float(df['population'].max()),
+        'format': 'count',
+    },
+    'County unemployment rate': {
+        'title': 'Unemployment percentile (US counties)',
+        'scheme': 'oranges',
+        'min': 0,
+        'max': 100,
+        'format': 'percentile',
+    },
+}
+legend_metrics_json = json.dumps(legend_metrics)
 style_marker = '      display: flex;\n'
+embed_style_marker = (
+    '    #vis.vega-embed {\n'
+    '      width: 100%;\n'
+    '      display: flex;\n'
+)
 if style_marker not in dashboard_html:
     raise ValueError('Could not find the dashboard container style to center the visualization')
 dashboard_html = dashboard_html.replace(
     '  <style>\n',
     '  <style>\n'
     '    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }\n'
-    '    body { display: flex; align-items: center; justify-content: center; }\n',
+    '    body { display: flex; align-items: center; justify-content: center; }\n'
+    '    #metric-menu {\n'
+    '      position: fixed;\n'
+    '      left: 12px;\n'
+    '      top: 50%;\n'
+    '      transform: translateY(-50%);\n'
+    '      z-index: 10;\n'
+    '      width: 190px;\n'
+    '      padding: 14px;\n'
+    '      background: rgba(255, 255, 255, 0.96);\n'
+    '      border: 1px solid #d9dfdc;\n'
+    '      border-radius: 8px;\n'
+    '      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);\n'
+    '      font: 14px/1.35 Arial, sans-serif;\n'
+    '    }\n'
+    '    #metric-menu h2 { margin: 0 0 8px; font-size: 14px; }\n'
+    '    #metric-menu button {\n'
+    '      display: block;\n'
+    '      width: 100%;\n'
+    '      padding: 8px 10px;\n'
+    '      border: 0;\n'
+    '      border-radius: 5px;\n'
+    '      background: transparent;\n'
+    '      color: #333;\n'
+    '      text-align: left;\n'
+    '      font: inherit;\n'
+    '      cursor: pointer;\n'
+    '    }\n'
+    '    #metric-menu button:hover { background: #eef3f1; }\n'
+    '    #metric-menu button[aria-pressed=\"true\"] {\n'
+    '      background: #e1eee9;\n'
+    '      color: #176b55;\n'
+    '      font-weight: 700;\n'
+    '    }\n'
+    '    #map-legend {\n'
+    '      position: fixed;\n'
+    '      left: 55%;\n'
+    '      top: 18%;\n'
+    '      z-index: 10;\n'
+    '      width: max-content;\n'
+    '      padding: 0;\n'
+    '      font: 12px/1.35 Arial, sans-serif;\n'
+    '    }\n'
+    '    #map-legend-title { display: block; margin-bottom: 8px; font-weight: 700; }\n'
+    '    #map-legend-content { display: flex; align-items: stretch; gap: 8px; }\n'
+    '    #map-legend-scale { width: 14px; min-height: 240px; border-radius: 3px; }\n'
+    '    #map-legend-labels { display: flex; flex-direction: column; justify-content: space-between; }\n'
+    '    @media (max-width: 900px) {\n'
+    '      #metric-menu { left: 8px; top: 12px; transform: none; width: 160px; padding: 10px; }\n'
+    '      #map-legend { left: 55%; top: 12px; width: max-content; padding: 0; }\n'
+    '      #map-legend-scale { min-height: 180px; }\n'
+    '    }\n',
     1,
 )
+if embed_style_marker not in dashboard_html:
+    raise ValueError('Could not find the dashboard embed style to size the visualization')
+dashboard_html = dashboard_html.replace(
+    '  <div id="vis"></div>',
+    '  <nav id="metric-menu" aria-label="Map metric">\n'
+    '    <h2>Map metric</h2>\n'
+    '    <button type="button" data-metric="Data center count" aria-pressed="true">Data center count</button>\n'
+    '    <button type="button" data-metric="Land price" aria-pressed="false">Land price</button>\n'
+    '    <button type="button" data-metric="Commercial electricity price" aria-pressed="false">Commercial electricity price</button>\n'
+    '    <button type="button" data-metric="Population" aria-pressed="false">Population</button>\n'
+    '    <button type="button" data-metric="County unemployment rate" aria-pressed="false">County unemployment rate</button>\n'
+    '  </nav>\n'
+    '  <aside id="map-legend" aria-live="polite">\n'
+    '    <span id="map-legend-title"></span>\n'
+    '    <div id="map-legend-content">\n'
+    '      <div id="map-legend-scale"></div>\n'
+    '      <div id="map-legend-labels"><span id="map-legend-max"></span><span id="map-legend-min"></span></div>\n'
+    '    </div>\n'
+    '  </aside>\n'
+    '  <div id="vis"></div>',
+    1,
+)
+embed_script = (
+    '      vegaEmbed("#vis", spec, embedOpt)\n'
+    '        .catch(error => showError(el, error));'
+)
+interactive_embed_script = (
+    '      vegaEmbed("#vis", spec, embedOpt)\n'
+    '        .then(({view}) => {\n'
+    f'          const legendMetrics = {legend_metrics_json};\n'
+    '          const schemeColors = {\n'
+    '            blues: ["#deebf7", "#9ecae1", "#3182bd"],\n'
+    '            greens: ["#e5f5e0", "#a1d99b", "#31a354"],\n'
+    '            oranges: ["#fee6ce", "#fdae6b", "#e6550d"],\n'
+    '            purples: ["#efedf5", "#bcbddc", "#756bb1"]\n'
+    '          };\n'
+    '          const formatLegendValue = (value, format) => {\n'
+    '            if (format === "currency") return "$" + Math.round(value).toLocaleString();\n'
+    '            if (format === "decimal") return value.toFixed(1);\n'
+    '            if (format === "percentile") return Math.round(value) + "th";\n'
+    '            return Math.round(value).toLocaleString();\n'
+    '          };\n'
+    '          const updateLegend = metric => {\n'
+    '            const item = legendMetrics[metric];\n'
+    '            document.getElementById("map-legend-title").textContent = item.title;\n'
+    '            document.getElementById("map-legend-scale").style.background =\n'
+    '              "linear-gradient(to top, " + schemeColors[item.scheme].join(", ") + ")";\n'
+    '            document.getElementById("map-legend-min").textContent = formatLegendValue(item.min, item.format);\n'
+    '            document.getElementById("map-legend-max").textContent = formatLegendValue(item.max, item.format);\n'
+    '            document.getElementById("map-legend-labels").setAttribute("aria-label",\n'
+    '              formatLegendValue(item.min, item.format) + " to " + formatLegendValue(item.max, item.format));\n'
+    '          };\n'
+    '          updateLegend(view.signal("map_metric"));\n'
+    '          document.querySelectorAll("#metric-menu button").forEach(button => {\n'
+    '            button.addEventListener("click", () => {\n'
+    '              view.signal("map_metric", button.dataset.metric).runAsync().then(() => {\n'
+    '                updateLegend(button.dataset.metric);\n'
+    '              });\n'
+    '              document.querySelectorAll("#metric-menu button").forEach(option => {\n'
+    '                option.setAttribute("aria-pressed", String(option === button));\n'
+    '              });\n'
+    '            });\n'
+    '          });\n'
+    '        })\n'
+    '        .catch(error => showError(el, error));'
+)
+if embed_script not in dashboard_html:
+    raise ValueError('Could not find the Vega embed call to connect the map metric menu')
 dashboard_path.write_text(
     dashboard_html.replace(
-        style_marker,
-        f'{style_marker}      justify-content: center;\n'
+        embed_script,
+        interactive_embed_script,
+        1,
+    ).replace(
+        embed_style_marker,
+        f'{embed_style_marker}      justify-content: center;\n'
         '      align-items: center;\n'
         '      width: 100vw;\n'
         '      height: 100vh;\n'
