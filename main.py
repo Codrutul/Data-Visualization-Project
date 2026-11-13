@@ -1,5 +1,4 @@
 import json
-import math
 from pathlib import Path
 
 import altair as alt
@@ -250,8 +249,35 @@ if set(state_unemployment['state_id']) != set(df['state_id']):
     raise ValueError('County unemployment data does not cover every state in the dashboard')
 df = df.merge(state_unemployment, on='state_id', how='left', validate='one_to_one')
 
-radar_categories = ['Data centers', 'Land price', 'Electricity', 'Population', 'Unemployment']
-radar_metrics = [
+atlas_path = Path(__file__).resolve().parent / 'data' / 'compute-atlas-facilities.csv'
+atlas = pd.read_csv(atlas_path)
+water_path = Path(__file__).resolve().parent / 'data' / 'facility_water_stress.csv'
+water_scores = pd.read_csv(water_path, dtype={'id': str})
+month_columns = [f'bws_{month:02}_score' for month in range(1, 13)]
+water_scores = water_scores.loc[
+    water_scores[month_columns].notna().any(axis=1),
+    ['id', *month_columns],
+].copy()
+water_scores['annual_water_stress'] = water_scores[month_columns].mean(axis=1)
+water_state_lookup = atlas.loc[
+    atlas['facility_type'].eq('data_center') & atlas['state'].isin(STATE_INFO),
+    ['id', 'state'],
+].copy()
+water_state_lookup['state_id'] = water_state_lookup['state'].map(
+    {abbreviation: fips for abbreviation, (_, fips) in STATE_INFO.items()}
+)
+water_state_scores = water_state_lookup.merge(
+    water_scores[['id', 'annual_water_stress']],
+    on='id',
+    how='inner',
+    validate='one_to_one',
+).groupby('state_id', as_index=False).agg(
+    water_stress=('annual_water_stress', 'mean'),
+    water_stress_facilities=('annual_water_stress', 'count'),
+)
+df = df.merge(water_state_scores, on='state_id', how='left', validate='one_to_one')
+
+profile_metrics = [
     ('Data centers', 'data_center_count', 'facilities', None),
     (
         'Land price',
@@ -267,83 +293,49 @@ radar_metrics = [
     ),
     ('Population', 'population', f'residents ({population_year})', None),
     ('Unemployment', 'unemployment_rate', '%', None),
+    ('Water stress', 'water_stress', 'WRI score (0-5)', None),
 ]
-radar_records = []
-for category_order, (category, field, unit, note_field) in enumerate(radar_metrics):
+profile_records = []
+for category_order, (category, field, unit, note_field) in enumerate(profile_metrics):
     percentile_ranks = df[field].rank(method='average', pct=True) * 100
     for state_index, row in df.iterrows():
         value = row[field]
         missing = pd.isna(value)
         percentile = float(percentile_ranks.iloc[state_index]) if not missing else None
-        angle = -math.pi / 2 + 2 * math.pi * category_order / len(radar_categories)
-        radius = (percentile or 0.0) / 100
         if missing:
             value_label = 'No data'
-            value_note = 'No source value; shown at the chart center.'
+            value_note = 'No facility water-stress data available for this state.'
         else:
             if field == 'electricity_price':
                 value_label = f'{value:.2f} {unit}'
             elif field == 'unemployment_rate':
                 value_label = f'{value:.2f}{unit}'
+            elif field == 'water_stress':
+                value_label = f'{value:.2f} {unit}'
             else:
                 value_label = f'{value:,.0f} {unit}'
-            value_note = row[note_field] if note_field else 'Reported value'
-        radar_records.append({
+            if field == 'water_stress':
+                value_note = (
+                    f'Average across {int(row["water_stress_facilities"])} facilities '
+                    'with WRI scores'
+                )
+            else:
+                value_note = row[note_field] if note_field else 'Reported value'
+        profile_records.append({
             'state_id': int(row['state_id']),
             'state_name': row['state_name'],
             'category': category,
             'category_order': category_order,
             'percentile_rank': percentile,
-            'plot_rank': radius * 100,
-            'x': radius * math.cos(angle),
-            'y': radius * math.sin(angle),
+            'value': float(value) if not missing else None,
             'value_label': value_label,
             'value_note': value_note,
         })
 
-radar_df = pd.DataFrame(radar_records)
-radar_line_df = pd.concat(
-    [
-        radar_df,
-        radar_df.loc[radar_df['category_order'].eq(0)].assign(
-            category_order=len(radar_categories)
-        ),
-    ],
-    ignore_index=True,
-)
-radar_grid_records = []
-for ring_rank in (20, 40, 60, 80, 100):
-    for category_order in range(len(radar_categories) + 1):
-        angle = -math.pi / 2 + 2 * math.pi * category_order / len(radar_categories)
-        radius = ring_rank / 100
-        radar_grid_records.append({
-            'ring_rank': ring_rank,
-            'category_order': category_order,
-            'x': radius * math.cos(angle),
-            'y': radius * math.sin(angle),
-        })
-radar_grid_df = pd.DataFrame(radar_grid_records)
-
-radar_axis_records = []
-radar_label_records = []
-for category_order, category in enumerate(radar_categories):
-    angle = -math.pi / 2 + 2 * math.pi * category_order / len(radar_categories)
-    radar_axis_records.extend([
-        {'axis_order': category_order, 'x': 0.0, 'y': 0.0},
-        {'axis_order': category_order, 'x': math.cos(angle), 'y': math.sin(angle)},
-    ])
-    radar_label_records.append({
-        'category': category,
-        'x': 1.2 * math.cos(angle),
-        'y': 1.2 * math.sin(angle),
-    })
-radar_axis_df = pd.DataFrame(radar_axis_records)
-radar_label_df = pd.DataFrame(radar_label_records)
+profile_df = pd.DataFrame(profile_records)
 
 # Use Compute Atlas for the point layer: it provides facility-level coordinates,
 # status, and source links. Limit it to data centers in the 50 states and DC.
-atlas_path = Path(__file__).resolve().parent / 'data' / 'compute-atlas-facilities.csv'
-atlas = pd.read_csv(atlas_path)
 point_columns = {
     'id', 'name', 'operator', 'facility_type', 'status', 'confidence', 'city', 'state',
     'lat', 'lon', 'capacity_operational_mw', 'capacity_planned_mw',
@@ -375,12 +367,9 @@ if (
     or not points_df['longitude'].between(-180, 180).all()
 ):
     raise ValueError(f'Invalid coordinates found in {atlas_path}')
+overview_points_df = points_df.drop(columns='state_id')
 
 # Precomputed point-in-polygon join against WRI Aqueduct 4.0 baseline monthly basins.
-water_path = Path(__file__).resolve().with_name('facility_water_stress.csv')
-water_scores = pd.read_csv(water_path, dtype={'id': str})
-month_columns = [f'bws_{month:02}_score' for month in range(1, 13)]
-water_scores = water_scores[water_scores[month_columns].notna().any(axis=1)]
 water_profiles_json = water_scores.set_index('id')[month_columns].to_json(orient='index')
 
 status_domain = ['operational', 'under_construction', 'permitted', 'proposed', 'cancelled']
@@ -405,6 +394,7 @@ metric_value_expression = (
     "map_metric === 'Land price' ? datum.land_price : "
     "map_metric === 'Commercial electricity price' ? datum.electricity_price : "
     "map_metric === 'Population' ? datum.population : "
+    "map_metric === 'Water stress' ? datum.water_stress : "
     "datum.data_center_count"
 )
 metric_color_scheme = alt.ExprRef(
@@ -412,7 +402,8 @@ metric_color_scheme = alt.ExprRef(
         "map_metric === 'County unemployment rate' ? 'oranges' : "
         "map_metric === 'Land price' ? 'greens' : "
         "map_metric === 'Commercial electricity price' ? 'oranges' : "
-        "map_metric === 'Population' ? 'purples' : 'blues'"
+        "map_metric === 'Population' ? 'purples' : "
+        "map_metric === 'Water stress' ? 'purples' : 'blues'"
     )
 )
 metric_color = alt.Color(
@@ -427,19 +418,22 @@ states = alt.topo_feature(data.us_10m.url, 'states')
 click = alt.selection_point(
     name='selected_state',
     fields=['state_id'],
-    empty='all',
     clear=False,
     on=alt.EventStream(type='click', filter='false'),
 )
+selected_state_predicate = {'param': 'selected_state'}
 
-state_layer = alt.Chart(states).mark_geoshape(
+state_layer = alt.Chart(states, name='overview_state_shapes').mark_geoshape(
     clip=True,
     stroke='white',
     strokeWidth=0.5,
 ).encode(
     color=metric_color,
-    stroke=alt.condition(click, alt.value('#243746'), alt.value('white'), empty=False),
-    strokeWidth=alt.condition(click, alt.value(2), alt.value(0.5), empty=False),
+    opacity=alt.condition(
+        click,
+        alt.value(1),
+        alt.value(0.12),
+    ),
     tooltip=[
         alt.Tooltip('state_name:N', title='State'),
         alt.Tooltip('data_center_count:Q', title='Data centers', format=','),
@@ -480,12 +474,15 @@ state_layer = alt.Chart(states).mark_geoshape(
             'electricity_price',
             'population',
             'unemployment_rate',
+            'water_stress',
         ],
     ),
 ).transform_calculate(
     metric_value=metric_value_expression,
 ).transform_filter(
     "map_metric !== 'County unemployment rate'"
+).add_params(
+    click
 )
 
 counties = alt.topo_feature(data.us_10m.url, 'counties')
@@ -494,13 +491,16 @@ county_layer = alt.Chart(counties).mark_geoshape(
     stroke='white',
     strokeWidth=0.25,
 ).encode(
-    stroke=alt.condition(click, alt.value('#243746'), alt.value('white'), empty=False),
-    strokeWidth=alt.condition(click, alt.value(0.9), alt.value(0.25), empty=False),
     color=alt.Color(
         'unemployment_percentile:Q',
         title='Unemployment percentile (US counties)',
         scale=alt.Scale(domain=[0, 100], scheme='oranges'),
         legend=None,
+    ),
+    opacity=alt.condition(
+        click,
+        alt.value(1),
+        alt.value(0.12),
     ),
     tooltip=[
         alt.Tooltip('county_name:N', title='County'),
@@ -574,15 +574,14 @@ detail_state_layer = alt.Chart(states).mark_geoshape(
         ],
     ),
 ).transform_filter(
-    click,
-    empty=False,
+    {'param': 'selected_state', 'empty': False},
 ).transform_calculate(
     metric_value=metric_value_expression,
 )
 
 water_mode = alt.param(name='water_mode', value=False)
 water_status = alt.param(name='water_status', value='all')
-point_layer = alt.Chart(points_df, name='overview_facilities').mark_circle(
+point_layer = alt.Chart(overview_points_df, name='overview_facilities').mark_circle(
     clip=True,
     size=36,
     opacity=0.8,
@@ -650,13 +649,10 @@ detail_point_layer = alt.Chart(points_df).mark_circle(
 ).transform_filter(
     'show_points'
 ).transform_filter(
-    click,
-    empty=False,
+    {'param': 'selected_state', 'empty': False},
 )
 
-map_chart = alt.layer(state_layer, county_layer, point_layer).add_params(
-    click
-).project(
+map_chart = alt.layer(state_layer, county_layer, point_layer).project(
     type='albersUsa',
     scale=alt.ExprRef(expr='990 * overview_zoom'),
     translate=alt.ExprRef(expr='[420 + 29 * overview_zoom + overview_pan_x, 230 - 3 * overview_zoom + overview_pan_y]'),
@@ -664,7 +660,7 @@ map_chart = alt.layer(state_layer, county_layer, point_layer).add_params(
     name='overview_map',
     width=840,
     height=460,
-    title='US Overview (click states to select or deselect)',
+    title='US Overview (click to select; Ctrl+click to compare)',
 )
 
 detail_map = alt.layer(detail_state_layer, detail_point_layer).project(
@@ -676,45 +672,22 @@ detail_map = alt.layer(detail_state_layer, detail_point_layer).project(
 )
 
 parallel_dimensions = [
-    ('State', None),
     ('Data centers', 'data_center_count'),
     ('Land price ($/acre)', 'land_price'),
     ('Electricity (cents/kWh)', 'electricity_price'),
     ('Population', 'population'),
     ('Unemployment rate (%)', 'unemployment_rate'),
+    ('Water stress (WRI score 0-5)', 'water_stress'),
 ]
 parallel_records = []
 parallel_axis_records = []
 parallel_tick_records = []
-state_count = len(df)
-state_positions = {
-    row['state_name']: 0.98 - state_index * 0.96 / max(state_count - 1, 1)
-    for state_index, (_, row) in enumerate(df.iterrows())
-}
 
 for dimension_index, (dimension, field) in enumerate(parallel_dimensions):
     parallel_axis_records.append({
         'axis_x': dimension_index,
         'dimension': dimension,
     })
-    if field is None:
-        for state_name, position in state_positions.items():
-            parallel_records.append({
-                'state_id': next(
-                    state_id for state_id, name in state_name_by_id.items()
-                    if name == state_name
-                ),
-                'state_name': state_name,
-                'axis_x': dimension_index,
-                'normalized_value': position,
-                'data_center_count': None,
-                'land_price': None,
-                'land_price_note': None,
-                'electricity_price': None,
-                'population': None,
-                'unemployment_rate': None,
-            })
-        continue
 
     minimum = float(df[field].min())
     maximum = float(df[field].max())
@@ -722,12 +695,14 @@ for dimension_index, (dimension, field) in enumerate(parallel_dimensions):
         raise ValueError(f'Missing values found for parallel-coordinate dimension {dimension}')
     value_range = maximum - minimum
     for _, row in df.iterrows():
-        value = float(row[field])
-        normalized_value = (
-            0.02 + 0.96 * (value - minimum) / value_range
-            if value_range
-            else 0.5
-        )
+        missing = pd.isna(row[field])
+        value = float(row[field]) if not missing else None
+        if missing:
+            normalized_value = None
+        elif value_range:
+            normalized_value = 0.02 + 0.96 * (value - minimum) / value_range
+        else:
+            normalized_value = 0.5
         parallel_records.append({
             'state_id': int(row['state_id']),
             'state_name': row['state_name'],
@@ -739,6 +714,7 @@ for dimension_index, (dimension, field) in enumerate(parallel_dimensions):
             'electricity_price': float(row['electricity_price']),
             'population': int(row['population']),
             'unemployment_rate': float(row['unemployment_rate']),
+            'water_stress': float(row['water_stress']) if not pd.isna(row['water_stress']) else None,
         })
         for tick_fraction in (0, 0.5, 1):
             tick_value = minimum + value_range * tick_fraction
@@ -748,6 +724,8 @@ for dimension_index, (dimension, field) in enumerate(parallel_dimensions):
                 tick_label = f'{tick_value:.1f}'
             elif field == 'unemployment_rate':
                 tick_label = f'{tick_value:.1f}%'
+            elif field == 'water_stress':
+                tick_label = f'{tick_value:.1f}'
             else:
                 tick_label = f'{tick_value:,.0f}'
             parallel_tick_records.append({
@@ -761,11 +739,7 @@ for dimension_index, (dimension, field) in enumerate(parallel_dimensions):
 parallel_data = pd.DataFrame(parallel_records)
 parallel_axes = pd.DataFrame(parallel_axis_records)
 parallel_ticks = pd.DataFrame(parallel_tick_records)
-parallel_state_labels = pd.DataFrame([
-    {'state_name': state_name, 'normalized_value': position}
-    for state_name, position in state_positions.items()
-])
-parallel_x_scale = alt.Scale(domain=[-0.6, 5.1], nice=False)
+parallel_x_scale = alt.Scale(domain=[-0.6, 5.6], nice=False)
 parallel_y_scale = alt.Scale(domain=[-0.04, 1.1], nice=False)
 
 parallel_lines = alt.Chart(parallel_data).mark_line(
@@ -776,7 +750,7 @@ parallel_lines = alt.Chart(parallel_data).mark_line(
     detail='state_name:N',
     order=alt.Order('axis_x:Q'),
     color=alt.condition(
-        click,
+        selected_state_predicate,
         alt.Color(
             'state_name:N',
             title='Selected state',
@@ -787,7 +761,7 @@ parallel_lines = alt.Chart(parallel_data).mark_line(
         empty=False,
     ),
     size=alt.condition(
-        click,
+        selected_state_predicate,
         alt.value(6),
         alt.value(1.5),
         empty=False,
@@ -805,9 +779,14 @@ parallel_lines = alt.Chart(parallel_data).mark_line(
             title='Weighted unemployment rate (2025, %)',
             format='.2f',
         ),
+        alt.Tooltip(
+            'water_stress:Q',
+            title='Average annual water stress (WRI, 0-5)',
+            format='.2f',
+        ),
     ],
 ).transform_filter(
-    click
+    selected_state_predicate
 )
 parallel_axis_lines = alt.Chart(parallel_axes).mark_rule(
     color='#9ba7a3',
@@ -850,122 +829,102 @@ parallel_dimension_labels = alt.Chart(parallel_axes).mark_text(
     y=alt.Y(datum=1.04, scale=parallel_y_scale, axis=None),
     text='dimension:N',
 )
-parallel_state_labels_chart = alt.Chart(parallel_state_labels).mark_text(
-    align='right',
-    baseline='middle',
-    dx=-8,
-    fontSize=8,
-    color='#4c5552',
-).encode(
-    x=alt.X(datum=-0.02, scale=parallel_x_scale, axis=None),
-    y=alt.Y('normalized_value:Q', scale=parallel_y_scale, axis=None),
-    text='state_name:N',
-)
 parallel_chart = alt.layer(
     parallel_lines,
     parallel_axis_lines,
     parallel_tick_marks,
     parallel_tick_labels,
     parallel_dimension_labels,
-    parallel_state_labels_chart,
 ).properties(
     width=1150,
     height=500,
     title=alt.TitleParams(
         text='Data Centers by State',
         subtitle=(
-            f'States are alphabetical; numeric axes are scaled independently. '
+            f'Numeric axes are scaled independently. '
             f'Latest data: land {latest_land_price_year}, electricity {latest_electricity_year}, '
-            f'population {population_year}, unemployment 2025. Click up to 3 states to compare.'
+            f'population {population_year}, unemployment 2025; water stress is average WRI facility score. '
+            f'Click up to 3 states to compare.'
         ),
     ),
 )
 
-radar_x_scale = alt.Scale(domain=[-1.35, 1.35], nice=False, zero=False)
-radar_y_scale = alt.Scale(domain=[-1.35, 1.35], nice=False, zero=False)
-radar_grid = alt.Chart(radar_grid_df).mark_line(
-    color='#d5d8dc',
-    strokeWidth=1,
+state_color_domain = sorted(df['state_name'].unique())
+profile_bars = alt.Chart(profile_df).mark_bar(
+    cornerRadiusEnd=3,
 ).encode(
-    x=alt.X('x:Q', scale=radar_x_scale, axis=None),
-    y=alt.Y('y:Q', scale=radar_y_scale, axis=None),
-    detail='ring_rank:N',
-    order=alt.Order('category_order:Q'),
-)
-radar_axes = alt.Chart(radar_axis_df).mark_line(
-    color='#c6c9cc',
-    strokeWidth=1,
-).encode(
-    x=alt.X('x:Q', scale=radar_x_scale, axis=None),
-    y=alt.Y('y:Q', scale=radar_y_scale, axis=None),
-    detail='axis_order:N',
-)
-radar_ring_labels = alt.Chart(pd.DataFrame({
-    'x': [0, 0, 0, 0, 0],
-    'y': [-0.2, -0.4, -0.6, -0.8, -1.0],
-    'rank_label': ['20', '40', '60', '80', '100'],
-})).mark_text(
-    color='#777777',
-    fontSize=10,
-    dx=17,
-    dy=0,
-).encode(
-    x=alt.X('x:Q', scale=radar_x_scale, axis=None),
-    y=alt.Y('y:Q', scale=radar_y_scale, axis=None),
-    text='rank_label:N',
-)
-radar_labels = alt.Chart(radar_label_df).mark_text(
-    fontSize=12,
-    fontWeight='bold',
-    color='#333333',
-).encode(
-    x=alt.X('x:Q', scale=radar_x_scale, axis=None),
-    y=alt.Y('y:Q', scale=radar_y_scale, axis=None),
-    text='category:N',
-)
-radar_line = alt.Chart(radar_line_df).mark_line(
-    color='#3c78b5',
-    strokeWidth=2.5,
-    point=alt.OverlayMarkDef(
-        filled=True,
-        fill='#3c78b5',
-        stroke='white',
-        size=75,
+    x=alt.X(
+        'category:N',
+        title=None,
+        sort=[metric[0] for metric in profile_metrics],
+        axis=alt.Axis(labelAngle=0, labelLimit=100),
     ),
-).encode(
-    x=alt.X('x:Q', scale=radar_x_scale, axis=None),
-    y=alt.Y('y:Q', scale=radar_y_scale, axis=None),
+    xOffset=alt.XOffset(
+        'state_name:N',
+        sort=state_color_domain,
+    ),
+    y=alt.Y(
+        'percentile_rank:Q',
+        title='Percentile among states',
+        scale=alt.Scale(domain=[0, 100]),
+        axis=alt.Axis(orient='left'),
+    ),
     color=alt.Color(
         'state_name:N',
-        title='State',
-        legend=None,
-        scale=alt.Scale(scheme='tableau20'),
+        title='Selected state',
+        scale=alt.Scale(domain=state_color_domain, scheme='tableau20'),
     ),
-    detail='state_name:N',
-    order=alt.Order('category_order:Q'),
     tooltip=[
         alt.Tooltip('state_name:N', title='State'),
-        alt.Tooltip('category:N', title='Category'),
+        alt.Tooltip('category:N', title='Attribute'),
         alt.Tooltip('value_label:N', title='Value'),
         alt.Tooltip('percentile_rank:Q', title='Percentile among states', format='.1f'),
         alt.Tooltip('value_note:N', title='Data note'),
     ],
 ).transform_filter(
-    click,
-    empty=False,
+    {'param': 'selected_state', 'empty': False},
 )
-radar_chart = alt.layer(
-    radar_grid,
-    radar_axes,
-    radar_ring_labels,
-    radar_labels,
-    radar_line,
+
+profile_total = alt.Chart(profile_df).transform_filter(
+    {'param': 'selected_state', 'empty': False},
+).transform_filter(
+    'isValid(datum.percentile_rank)',
+).transform_aggregate(
+    total_percentile='sum(percentile_rank)',
+    states_with_data='valid(percentile_rank)',
+    groupby=['category', 'category_order'],
+).mark_line(
+    color='#344955',
+    strokeWidth=2.5,
+    point=alt.OverlayMarkDef(filled=True, color='#344955', size=48),
+).encode(
+    x=alt.X(
+        'category:N',
+        sort=[metric[0] for metric in profile_metrics],
+    ),
+    y=alt.Y(
+        'total_percentile:Q',
+        title='Combined percentile',
+        axis=alt.Axis(orient='right'),
+    ),
+    tooltip=[
+        alt.Tooltip('category:N', title='Attribute'),
+        alt.Tooltip('total_percentile:Q', title='Combined percentile', format='.1f'),
+        alt.Tooltip('states_with_data:Q', title='States with data', format='.0f'),
+    ],
+)
+
+profile_chart = alt.layer(
+    profile_bars,
+    profile_total,
+).resolve_scale(
+    y='independent',
 ).properties(
     width=575,
     height=420,
     title=alt.TitleParams(
-        text='Selected State Profiles',
-        subtitle='Percentile rank (0 center to 100 outer ring); compare up to three selected states.',
+        text='Selected State Comparison',
+        subtitle='Bars show each state’s percentile; the line shows their combined percentile. Hover for original values.',
     ),
 )
 
@@ -977,7 +936,7 @@ ranking_chart = alt.Chart(df, name='state_ranking').transform_calculate(
     ranked_value=ranking_value,
     rank_label="format(datum.ranked_value, map_metric === 'Land price' ? '$,.0f' : "
                "map_metric === 'Commercial electricity price' || map_metric === "
-               "'County unemployment rate' ? ',.1f' : ',.0f') + "
+               "'County unemployment rate' || map_metric === 'Water stress' ? ',.1f' : ',.0f') + "
                "(map_metric === 'County unemployment rate' ? '%' : '')",
 ).transform_filter(
     'isValid(datum.ranked_value)'
@@ -990,12 +949,12 @@ ranking_chart = alt.Chart(df, name='state_ranking').transform_calculate(
     x=alt.X('ranked_value:Q', title=None, axis=None),
     y=alt.Y('state_name:N', sort=alt.EncodingSortField(field='row'), title=None,
             axis=alt.Axis(labelLimit=135, ticks=False, domain=False)),
-    color=alt.condition(click, alt.value('#284e63'), alt.value('#82a9bd'), empty=False),
+    color=alt.condition(selected_state_predicate, alt.value('#284e63'), alt.value('#82a9bd'), empty=False),
     tooltip=[alt.Tooltip('state_name:N', title='State'), alt.Tooltip('rank_label:N', title='Value')],
 ).properties(
     width=175,
     height=460,
-    title=alt.TitleParams('Top 10 states', subtitle='Uses state rates for unemployment'),
+    title=alt.TitleParams('Top 10 states', subtitle='Ranked by selected map metric'),
 )
 
 # Reserve space inside the shared Vega layout for the HTML comparison panel.
@@ -1005,7 +964,7 @@ water_space = alt.Chart(alt.Data(values=[{}]), name='water_space').mark_point(
 
 overview = alt.hconcat(map_chart, ranking_chart, spacing=24).resolve_scale(color='independent')
 dashboard = alt.vconcat(
-    overview, alt.hconcat(detail_map, radar_chart, spacing=20), water_space, parallel_chart, spacing=24
+    overview, alt.hconcat(detail_map, profile_chart, spacing=20), water_space, parallel_chart, spacing=24
 ).add_params(
     show_points,
     map_metric,
@@ -1023,6 +982,31 @@ dashboard.config.style = {'view': {'stroke': '#d9dfdc', 'strokeWidth': 1, 'corne
 dashboard_path = Path(__file__).resolve().parent / 'data_center_dashboard_1.html'
 dashboard.save(dashboard_path, embed_options={"actions": False})
 dashboard_html = dashboard_path.read_text(encoding='utf-8')
+spec_start_marker = 'var spec = '
+spec_start = dashboard_html.index(spec_start_marker) + len(spec_start_marker)
+spec_end = dashboard_html.index(';\n', spec_start)
+dashboard_spec = json.loads(dashboard_html[spec_start:spec_end])
+selected_state_param = next(
+    (param for param in dashboard_spec.get('params', []) if param.get('name') == 'selected_state'),
+    None,
+)
+if selected_state_param is None:
+    raise ValueError('Could not find the selected_state selection in the generated chart')
+state_shape_view = next(
+    (
+        view for view in selected_state_param.get('views', [])
+        if view.startswith('overview_state_shapes')
+    ),
+    None,
+)
+if state_shape_view is None:
+    raise ValueError('Could not identify the state-shape view for the selected_state selection')
+selected_state_param['views'] = [state_shape_view]
+dashboard_html = (
+    dashboard_html[:spec_start]
+    + json.dumps(dashboard_spec)
+    + dashboard_html[spec_end:]
+)
 legend_metrics = {
     'Data center count': {
         'title': 'Data centers',
@@ -1052,6 +1036,13 @@ legend_metrics = {
         'max': float(df['population'].max()),
         'format': 'count',
     },
+    'Water stress': {
+        'title': 'Average water stress (WRI score, 0-5)',
+        'scheme': 'purples',
+        'min': float(df['water_stress'].min()),
+        'max': float(df['water_stress'].max()),
+        'format': 'decimal',
+    },
     'County unemployment rate': {
         'title': 'Unemployment percentile (US counties)',
         'scheme': 'oranges',
@@ -1062,6 +1053,10 @@ legend_metrics = {
 }
 legend_metrics_json = json.dumps(legend_metrics)
 state_options_json = df[['state_id', 'state_name']].to_json(orient='records')
+state_ids_json = json.dumps({
+    abbreviation: state_id
+    for abbreviation, (_, state_id) in STATE_INFO.items()
+})
 dashboard_styles = """
     html { overflow-x: clip; overflow-y: auto; }
     body { margin: 0; }
@@ -1161,8 +1156,9 @@ dashboard_toolbar = """  <header id="dashboard-toolbar">
       <button type="button" data-metric="Land price" aria-pressed="false">Land price</button>
       <button type="button" data-metric="Commercial electricity price" aria-pressed="false">Commercial electricity price</button>
       <button type="button" data-metric="Population" aria-pressed="false">Population</button>
+      <button type="button" data-metric="Water stress" aria-pressed="false">Water stress</button>
       <button type="button" data-metric="County unemployment rate" aria-pressed="false">County unemployment rate</button>
-      <button id="water-toggle" type="button" aria-controls="water-panel" aria-expanded="false">Water stress</button>
+      <button id="water-toggle" type="button" aria-controls="water-panel" aria-expanded="false">Seasonal facility chart</button>
     </nav>
     <div id="toolbar-options">
       <label><input id="show-points" type="checkbox"> Show Compute Atlas data center locations</label>
@@ -1248,6 +1244,7 @@ interactive_embed_script = (
     '\n'
     f'          const states = {state_options_json};\n'
     '          const stateNames = new Map(states.map(({state_id, state_name}) => [state_id, state_name]));\n'
+    f'          const stateIds = {state_ids_json};\n'
     '          const store = "selected_state_store";\n'
     '          const unit = spec.params.find(param => param.name === "selected_state").views[0];\n'
     '          const chips = document.getElementById("selected-states");\n'
@@ -1520,16 +1517,21 @@ interactive_embed_script = (
     '            waterMessage.textContent = waterProfiles[id] ? "" : "No monthly basin scores are available for " + site.name + ".";\n'
     '            renderWater();\n'
     '          }\n'
-    '          view.addEventListener("click", (_, item) => {\n'
+    '          view.addEventListener("click", (event, item) => {\n'
     '            if (dragged) { dragged = false; return; }\n'
     '            if (!waterPanel.hidden && item?.mark?.name === "overview_facilities_marks") {\n'
     '              compareWaterSite(item.datum);\n'
     '              return;\n'
     '            }\n'
     '            if (!overviewItem(item) && item?.mark?.name !== "state_ranking_marks") return;\n'
-    '            const id = item.datum?.state_id;\n'
+    '            const id = item.datum?.state_id ?? stateIds[item.datum?.state];\n'
     '            if (!stateNames.has(id)) return;\n'
-    '            editSelection(ids => ids.includes(id) ? ids.filter(value => value !== id) : [...ids, id]);\n'
+    '            editSelection(ids => {\n'
+    '              if (event.ctrlKey || event.metaKey) {\n'
+    '                return ids.includes(id) ? ids.filter(value => value !== id) : [...ids, id];\n'
+    '              }\n'
+    '              return ids.includes(id) && ids.length === 1 ? ids : [id];\n'
+    '            });\n'
     '          });\n'
     f'          const legendMetrics = {legend_metrics_json};\n'
     '          const schemeColors = {\n'
