@@ -345,7 +345,7 @@ radar_label_df = pd.DataFrame(radar_label_records)
 atlas_path = Path(__file__).resolve().parent / 'data' / 'compute-atlas-facilities.csv'
 atlas = pd.read_csv(atlas_path)
 point_columns = {
-    'name', 'operator', 'facility_type', 'status', 'confidence', 'city', 'state',
+    'id', 'name', 'operator', 'facility_type', 'status', 'confidence', 'city', 'state',
     'lat', 'lon', 'capacity_operational_mw', 'capacity_planned_mw',
     'source_count', 'detail_url', 'primary_source_url',
 }
@@ -376,6 +376,13 @@ if (
 ):
     raise ValueError(f'Invalid coordinates found in {atlas_path}')
 
+# Precomputed point-in-polygon join against WRI Aqueduct 4.0 baseline monthly basins.
+water_path = Path(__file__).resolve().with_name('facility_water_stress.csv')
+water_scores = pd.read_csv(water_path, dtype={'id': str})
+month_columns = [f'bws_{month:02}_score' for month in range(1, 13)]
+water_scores = water_scores[water_scores[month_columns].notna().any(axis=1)]
+water_profiles_json = water_scores.set_index('id')[month_columns].to_json(orient='index')
+
 status_domain = ['operational', 'under_construction', 'permitted', 'proposed', 'cancelled']
 unknown_statuses = sorted(set(points_df['status'].dropna()) - set(status_domain))
 if unknown_statuses:
@@ -386,8 +393,10 @@ status_domain.append('unknown')
 show_points = alt.param(
     name='show_points',
     value=False,
-    bind=alt.binding_checkbox(name='Show Compute Atlas data center locations '),
 )
+map_zoom = alt.param(name='overview_zoom', value=1)
+map_pan_x = alt.param(name='overview_pan_x', value=0)
+map_pan_y = alt.param(name='overview_pan_y', value=0)
 map_metric = alt.param(
     name='map_metric',
     value='Data center count',
@@ -419,20 +428,18 @@ click = alt.selection_point(
     name='selected_state',
     fields=['state_id'],
     empty='all',
-    clear='dblclick',
-    on='click[!event.ctrlKey || length(data("selected_state_store")) < 4]',
-    toggle='event.ctrlKey',
+    clear=False,
+    on=alt.EventStream(type='click', filter='false'),
 )
 
 state_layer = alt.Chart(states).mark_geoshape(
+    clip=True,
     stroke='white',
     strokeWidth=0.5,
 ).encode(
-    color=alt.condition(
-        click,
-        metric_color,
-        alt.value('lightgray'),
-    ),
+    color=metric_color,
+    stroke=alt.condition(click, alt.value('#243746'), alt.value('white'), empty=False),
+    strokeWidth=alt.condition(click, alt.value(2), alt.value(0.5), empty=False),
     tooltip=[
         alt.Tooltip('state_name:N', title='State'),
         alt.Tooltip('data_center_count:Q', title='Data centers', format=','),
@@ -483,9 +490,12 @@ state_layer = alt.Chart(states).mark_geoshape(
 
 counties = alt.topo_feature(data.us_10m.url, 'counties')
 county_layer = alt.Chart(counties).mark_geoshape(
+    clip=True,
     stroke='white',
     strokeWidth=0.25,
 ).encode(
+    stroke=alt.condition(click, alt.value('#243746'), alt.value('white'), empty=False),
+    strokeWidth=alt.condition(click, alt.value(0.9), alt.value(0.25), empty=False),
     color=alt.Color(
         'unemployment_percentile:Q',
         title='Unemployment percentile (US counties)',
@@ -570,7 +580,10 @@ detail_state_layer = alt.Chart(states).mark_geoshape(
     metric_value=metric_value_expression,
 )
 
-point_layer = alt.Chart(points_df).mark_circle(
+water_mode = alt.param(name='water_mode', value=False)
+water_status = alt.param(name='water_status', value='all')
+point_layer = alt.Chart(points_df, name='overview_facilities').mark_circle(
+    clip=True,
     size=36,
     opacity=0.8,
     stroke='white',
@@ -601,7 +614,7 @@ point_layer = alt.Chart(points_df).mark_circle(
         alt.Tooltip('detail_url:N', title='Facility details'),
     ],
 ).transform_filter(
-    'show_points'
+    'water_mode ? (water_status === "all" ? indexof(["operational", "under_construction", "permitted", "proposed"], datum.status) >= 0 : datum.status === water_status) : show_points'
 )
 
 detail_point_layer = alt.Chart(points_df).mark_circle(
@@ -645,10 +658,13 @@ map_chart = alt.layer(state_layer, county_layer, point_layer).add_params(
     click
 ).project(
     type='albersUsa',
+    scale=alt.ExprRef(expr='990 * overview_zoom'),
+    translate=alt.ExprRef(expr='[420 + 29 * overview_zoom + overview_pan_x, 230 - 3 * overview_zoom + overview_pan_y]'),
 ).properties(
-    width=1150,
-    height=560,
-    title='US Overview (Select metric; click state/county, Ctrl+click up to 4 states)',
+    name='overview_map',
+    width=840,
+    height=460,
+    title='US Overview (click states to select or deselect)',
 )
 
 detail_map = alt.layer(detail_state_layer, detail_point_layer).project(
@@ -764,6 +780,7 @@ parallel_lines = alt.Chart(parallel_data).mark_line(
         alt.Color(
             'state_name:N',
             title='Selected state',
+            legend=None,
             scale=alt.Scale(scheme='tableau20'),
         ),
         alt.value('#4b8b78'),
@@ -859,8 +876,7 @@ parallel_chart = alt.layer(
         subtitle=(
             f'States are alphabetical; numeric axes are scaled independently. '
             f'Latest data: land {latest_land_price_year}, electricity {latest_electricity_year}, '
-            f'population {population_year}, unemployment 2025. Ctrl+click up to 4 states to compare; '
-            f'double-click the map to clear.'
+            f'population {population_year}, unemployment 2025. Click up to 3 states to compare.'
         ),
     ),
 )
@@ -922,6 +938,7 @@ radar_line = alt.Chart(radar_line_df).mark_line(
     color=alt.Color(
         'state_name:N',
         title='State',
+        legend=None,
         scale=alt.Scale(scheme='tableau20'),
     ),
     detail='state_name:N',
@@ -948,21 +965,63 @@ radar_chart = alt.layer(
     height=420,
     title=alt.TitleParams(
         text='Selected State Profiles',
-        subtitle='Percentile rank (0 center to 100 outer ring); compare up to four selected states.',
+        subtitle='Percentile rank (0 center to 100 outer ring); compare up to three selected states.',
     ),
 )
 
-dashboard = (
-    alt.vconcat(map_chart, parallel_chart, spacing=20)
-    | alt.vconcat(detail_map, radar_chart, spacing=20)
+ranking_value = (
+    "map_metric === 'County unemployment rate' ? datum.unemployment_rate : "
+    f"({metric_value_expression})"
+)
+ranking_chart = alt.Chart(df, name='state_ranking').transform_calculate(
+    ranked_value=ranking_value,
+    rank_label="format(datum.ranked_value, map_metric === 'Land price' ? '$,.0f' : "
+               "map_metric === 'Commercial electricity price' || map_metric === "
+               "'County unemployment rate' ? ',.1f' : ',.0f') + "
+               "(map_metric === 'County unemployment rate' ? '%' : '')",
+).transform_filter(
+    'isValid(datum.ranked_value)'
+).transform_window(
+    row='row_number()',
+    sort=[alt.SortField('ranked_value', order='descending'), alt.SortField('state_name')],
+).transform_filter(
+    'datum.row <= 10'
+).mark_bar(cursor='pointer', cornerRadiusEnd=2).encode(
+    x=alt.X('ranked_value:Q', title=None, axis=None),
+    y=alt.Y('state_name:N', sort=alt.EncodingSortField(field='row'), title=None,
+            axis=alt.Axis(labelLimit=135, ticks=False, domain=False)),
+    color=alt.condition(click, alt.value('#284e63'), alt.value('#82a9bd'), empty=False),
+    tooltip=[alt.Tooltip('state_name:N', title='State'), alt.Tooltip('rank_label:N', title='Value')],
+).properties(
+    width=175,
+    height=460,
+    title=alt.TitleParams('Top 10 states', subtitle='Uses state rates for unemployment'),
+)
+
+# Reserve space inside the shared Vega layout for the HTML comparison panel.
+water_space = alt.Chart(alt.Data(values=[{}]), name='water_space').mark_point(
+    opacity=0
+).properties(width=1150, height=0, view=alt.ViewConfig(stroke=None))
+
+overview = alt.hconcat(map_chart, ranking_chart, spacing=24).resolve_scale(color='independent')
+dashboard = alt.vconcat(
+    overview, alt.hconcat(detail_map, radar_chart, spacing=20), water_space, parallel_chart, spacing=24
 ).add_params(
     show_points,
     map_metric,
+    water_mode,
+    water_status,
+    map_zoom,
+    map_pan_x,
+    map_pan_y,
 ).configure_view(
-    strokeWidth=0,
+    stroke='#d9dfdc',
+    strokeWidth=1,
+    cornerRadius=5,
 )
-dashboard_path = Path(__file__).resolve().parent / 'data_center_dashboard.html'
-dashboard.save(dashboard_path)
+dashboard.config.style = {'view': {'stroke': '#d9dfdc', 'strokeWidth': 1, 'cornerRadius': 5}}
+dashboard_path = Path(__file__).resolve().parent / 'data_center_dashboard_1.html'
+dashboard.save(dashboard_path, embed_options={"actions": False})
 dashboard_html = dashboard_path.read_text(encoding='utf-8')
 legend_metrics = {
     'Data center count': {
@@ -1002,92 +1061,164 @@ legend_metrics = {
     },
 }
 legend_metrics_json = json.dumps(legend_metrics)
-style_marker = '      display: flex;\n'
-embed_style_marker = (
-    '    #vis.vega-embed {\n'
-    '      width: 100%;\n'
-    '      display: flex;\n'
-)
-if style_marker not in dashboard_html:
-    raise ValueError('Could not find the dashboard container style to center the visualization')
+state_options_json = df[['state_id', 'state_name']].to_json(orient='records')
+dashboard_styles = """
+    html { overflow-x: clip; overflow-y: auto; }
+    body { margin: 0; }
+    #dashboard-toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      padding: 10px 16px;
+      background: #fff;
+      border-bottom: 1px solid #d9dfdc;
+      font: 14px/1.35 Arial, sans-serif;
+    }
+    #metric-menu {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+    }
+    #metric-menu h2 { margin: 0 6px 0 0; font-size: 14px; }
+    #metric-menu button {
+      padding: 8px 10px;
+      border: 0;
+      border-radius: 5px;
+      background: #f4f6f5;
+      color: #333;
+      font: inherit;
+      cursor: pointer;
+    }
+    #metric-menu button:hover { background: #eef3f1; }
+    #metric-menu button[aria-pressed="true"] {
+      background: #e1eee9;
+      color: #176b55;
+      font-weight: 700;
+    }
+    #toolbar-options {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px 20px;
+      margin-top: 8px;
+    }
+    #state-picker, #selected-states { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    #zoom-reset, #state-picker input, #state-picker button, #selected-states button {
+      font: inherit; padding: 4px 8px; border: 1px solid #d9dfdc; border-radius: 5px;
+    }
+    #state-picker input { width: 10rem; max-width: 100%; }
+    #zoom-reset, #state-picker button, #selected-states button { cursor: pointer; background: #eef3f1; color: #245448; }
+    #map-legend {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px 8px;
+      font-size: 12px;
+    }
+    #map-legend-title { font-weight: 700; }
+    #map-legend-content, #map-legend-labels { display: flex; align-items: center; gap: 6px; }
+    #map-legend-scale { width: 88px; height: 10px; border-radius: 3px; }
+    #chart-frame { margin: 12px; }
+    #overview-controls:not([hidden]) {
+      position: absolute;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 6px;
+      background: #fff;
+      border: 1px solid #d9dfdc;
+      border-radius: 5px;
+    }
+    #zoom-reset { font-size: 12px; white-space: nowrap; }
+    #water-panel {
+      position: absolute; z-index: 1; box-sizing: border-box;
+      padding: 16px 20px; border: 1px solid #d9dfdc; border-radius: 5px;
+      background: #fff; color: #243746; font: 14px/1.45 Arial, sans-serif;
+    }
+    #water-heading { margin: 0; font-size: 18px; }
+    #water-panel p { margin: 6px 0; }
+    #water-panel select, #water-sites button { font: inherit; }
+    #water-panel a { color: #245448; }
+    #water-sites { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    #water-sites:empty { display: none; }
+    #water-sites button {
+      padding: 4px 8px; background: #f6f8f8; color: inherit; cursor: pointer;
+      border: 1px solid #d9dfdc; border-radius: 5px;
+    }
+    #water-results { margin-top: 10px; }
+    #water-toggle[aria-expanded="true"] { background: #e1eee9; color: #176b55; }
+    #zoom-reset:disabled { opacity: 0.65; cursor: default; }
+    #chart-frame #vis { position: relative; display: block; width: max-content; margin-inline: auto; }
+    #vis > .chart-wrapper { display: block; }
+    #vis .vega-actions, #vis details { display: none; }
+"""
+dashboard_toolbar = """  <header id="dashboard-toolbar">
+    <nav id="metric-menu" aria-label="Map metric">
+      <h2>Map metric</h2>
+      <button type="button" data-metric="Data center count" aria-pressed="true">Data center count</button>
+      <button type="button" data-metric="Land price" aria-pressed="false">Land price</button>
+      <button type="button" data-metric="Commercial electricity price" aria-pressed="false">Commercial electricity price</button>
+      <button type="button" data-metric="Population" aria-pressed="false">Population</button>
+      <button type="button" data-metric="County unemployment rate" aria-pressed="false">County unemployment rate</button>
+      <button id="water-toggle" type="button" aria-controls="water-panel" aria-expanded="false">Water stress</button>
+    </nav>
+    <div id="toolbar-options">
+      <label><input id="show-points" type="checkbox"> Show Compute Atlas data center locations</label>
+      <form id="state-picker">
+        <label for="state-search">Add state</label>
+        <input id="state-search" list="state-options" placeholder="Search states" autocomplete="off" required>
+        <datalist id="state-options"></datalist>
+        <button type="submit">Add</button>
+      </form>
+      <span id="selected-states" aria-label="Selected states"></span>
+      <span id="selection-message" role="status"></span>
+    </div>
+  </header>
+  <main id="chart-frame">
+    <section id="water-panel" hidden aria-labelledby="water-heading">
+      <h2 id="water-heading">Seasonal water stress</h2>
+      <p>Click facility dots on the overview map to compare up to three sites. Click again to remove a site.</p>
+      <label>Facility status <select id="water-status">
+        <option value="all">All active and planned</option>
+        <option value="operational">Operational</option>
+        <option value="under_construction">Under construction</option>
+        <option value="permitted">Permitted</option>
+        <option value="proposed">Proposed</option>
+      </select></label>
+      <p id="water-message" role="status"></p>
+      <div id="water-sites" aria-label="Selected facilities"></div>
+      <div id="water-results" hidden></div>
+      <p>Modeled water stress in each facility’s surrounding basin. Gaps indicate missing scores.
+        <a href="https://www.wri.org/data/aqueduct-global-maps-40-data">WRI Aqueduct 4.0</a></p>
+    </section>
+    <div id="vis"></div>
+    <div id="overview-controls" hidden>
+      <aside id="map-legend" aria-live="polite">
+        <span id="map-legend-title"></span>
+        <div id="map-legend-content">
+          <div id="map-legend-labels">
+            <span id="map-legend-min"></span>
+            <div id="map-legend-scale" aria-hidden="true"></div>
+            <span id="map-legend-max"></span>
+          </div>
+        </div>
+      </aside>
+      <button id="zoom-reset" type="button" disabled>Reset map</button>
+    </div>
+  </main>"""
 dashboard_html = dashboard_html.replace(
-    '  <style>\n',
-    '  <style>\n'
-    '    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }\n'
-    '    body { display: flex; align-items: center; justify-content: center; }\n'
-    '    #metric-menu {\n'
-    '      position: fixed;\n'
-    '      left: 12px;\n'
-    '      top: 50%;\n'
-    '      transform: translateY(-50%);\n'
-    '      z-index: 10;\n'
-    '      width: 190px;\n'
-    '      padding: 14px;\n'
-    '      background: rgba(255, 255, 255, 0.96);\n'
-    '      border: 1px solid #d9dfdc;\n'
-    '      border-radius: 8px;\n'
-    '      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);\n'
-    '      font: 14px/1.35 Arial, sans-serif;\n'
-    '    }\n'
-    '    #metric-menu h2 { margin: 0 0 8px; font-size: 14px; }\n'
-    '    #metric-menu button {\n'
-    '      display: block;\n'
-    '      width: 100%;\n'
-    '      padding: 8px 10px;\n'
-    '      border: 0;\n'
-    '      border-radius: 5px;\n'
-    '      background: transparent;\n'
-    '      color: #333;\n'
-    '      text-align: left;\n'
-    '      font: inherit;\n'
-    '      cursor: pointer;\n'
-    '    }\n'
-    '    #metric-menu button:hover { background: #eef3f1; }\n'
-    '    #metric-menu button[aria-pressed=\"true\"] {\n'
-    '      background: #e1eee9;\n'
-    '      color: #176b55;\n'
-    '      font-weight: 700;\n'
-    '    }\n'
-    '    #map-legend {\n'
-    '      position: fixed;\n'
-    '      left: 55%;\n'
-    '      top: 18%;\n'
-    '      z-index: 10;\n'
-    '      width: max-content;\n'
-    '      padding: 0;\n'
-    '      font: 12px/1.35 Arial, sans-serif;\n'
-    '    }\n'
-    '    #map-legend-title { display: block; margin-bottom: 8px; font-weight: 700; }\n'
-    '    #map-legend-content { display: flex; align-items: stretch; gap: 8px; }\n'
-    '    #map-legend-scale { width: 14px; min-height: 240px; border-radius: 3px; }\n'
-    '    #map-legend-labels { display: flex; flex-direction: column; justify-content: space-between; }\n'
-    '    @media (max-width: 900px) {\n'
-    '      #metric-menu { left: 8px; top: 12px; transform: none; width: 160px; padding: 10px; }\n'
-    '      #map-legend { left: 55%; top: 12px; width: max-content; padding: 0; }\n'
-    '      #map-legend-scale { min-height: 180px; }\n'
-    '    }\n',
+    '  <meta charset="UTF-8">\n',
+    '  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1">\n',
     1,
-)
-if embed_style_marker not in dashboard_html:
-    raise ValueError('Could not find the dashboard embed style to size the visualization')
-dashboard_html = dashboard_html.replace(
+).replace(
+    '  <style>\n',
+    '  <style>\n' + dashboard_styles.lstrip('\n'),
+    1,
+).replace(
     '  <div id="vis"></div>',
-    '  <nav id="metric-menu" aria-label="Map metric">\n'
-    '    <h2>Map metric</h2>\n'
-    '    <button type="button" data-metric="Data center count" aria-pressed="true">Data center count</button>\n'
-    '    <button type="button" data-metric="Land price" aria-pressed="false">Land price</button>\n'
-    '    <button type="button" data-metric="Commercial electricity price" aria-pressed="false">Commercial electricity price</button>\n'
-    '    <button type="button" data-metric="Population" aria-pressed="false">Population</button>\n'
-    '    <button type="button" data-metric="County unemployment rate" aria-pressed="false">County unemployment rate</button>\n'
-    '  </nav>\n'
-    '  <aside id="map-legend" aria-live="polite">\n'
-    '    <span id="map-legend-title"></span>\n'
-    '    <div id="map-legend-content">\n'
-    '      <div id="map-legend-scale"></div>\n'
-    '      <div id="map-legend-labels"><span id="map-legend-max"></span><span id="map-legend-min"></span></div>\n'
-    '    </div>\n'
-    '  </aside>\n'
-    '  <div id="vis"></div>',
+    dashboard_toolbar,
     1,
 )
 embed_script = (
@@ -1097,6 +1228,309 @@ embed_script = (
 interactive_embed_script = (
     '      vegaEmbed("#vis", spec, embedOpt)\n'
     '        .then(({view}) => {\n'
+    '          const frame = document.getElementById("chart-frame");\n'
+    '          const chart = el.querySelector("canvas.marks, svg.marks");\n'
+    '          const fitChart = () => {\n'
+    '            if (chart.offsetWidth > 0) {\n'
+    '              el.style.zoom = Math.min(1, frame.clientWidth / el.offsetWidth);\n'
+    '            }\n'
+    '          };\n'
+    '          const resizeObserver = new ResizeObserver(fitChart);\n'
+    '          resizeObserver.observe(frame);\n'
+    '          resizeObserver.observe(chart);\n'
+    '          fitChart();\n'
+    '\n'
+    '          const points = document.getElementById("show-points");\n'
+    '          points.checked = view.signal("show_points");\n'
+    '          points.addEventListener("change", () => {\n'
+    '            view.signal("show_points", points.checked).runAsync().catch(error => showError(el, error));\n'
+    '          });\n'
+    '\n'
+    f'          const states = {state_options_json};\n'
+    '          const stateNames = new Map(states.map(({state_id, state_name}) => [state_id, state_name]));\n'
+    '          const store = "selected_state_store";\n'
+    '          const unit = spec.params.find(param => param.name === "selected_state").views[0];\n'
+    '          const chips = document.getElementById("selected-states");\n'
+    '          const search = document.getElementById("state-search");\n'
+    '          const message = document.getElementById("selection-message");\n'
+    '          const options = document.getElementById("state-options");\n'
+    '          const currentIds = () => view.data(store).map(row => row.values[0]);\n'
+    '          let selectionQueue = Promise.resolve();\n'
+    '          function editSelection(edit) {\n'
+    '            selectionQueue = selectionQueue.then(async () => {\n'
+    '              const before = currentIds();\n'
+    '              const after = edit(before);\n'
+    '              if (after.length > 3) {\n'
+    '                message.textContent = "Remove a state before adding another (maximum three).";\n'
+    '                return;\n'
+    '              }\n'
+    '              message.textContent = "";\n'
+    '              if (before.length === after.length && before.every((id, i) => id === after[i])) return;\n'
+    '              const rows = after.map(id => ({\n'
+    '                unit,\n'
+    '                fields: [{field: "state_id", type: "E"}],\n'
+    '                values: [id],\n'
+    '              }));\n'
+    '              await view.change(store, vega.changeset().remove(() => true).insert(rows)).runAsync();\n'
+    '            }).catch(error => showError(el, error));\n'
+    '          }\n'
+    '          function renderChips(ids) {\n'
+    '            chips.replaceChildren(...ids.filter(id => stateNames.has(id)).map(id => {\n'
+    '              const name = stateNames.get(id);\n'
+    '              const chip = document.createElement("button");\n'
+    '              chip.type = "button";\n'
+    '              chip.textContent = name + " ×";\n'
+    '              const comparisonScale = view.scale("color");\n'
+    '              if (comparisonScale?.domain().includes(name)) {\n'
+    '                chip.style.borderLeft = "4px solid " + comparisonScale(name);\n'
+    '              }\n' 
+    '              chip.setAttribute("aria-label", "Remove " + name);\n'
+    '              chip.onclick = () => {\n'
+    '                editSelection(previous => previous.filter(value => value !== id));\n'
+    '                search.focus();\n'
+    '              };\n'
+    '              return chip;\n'
+    '            }));\n'
+    '          }\n'
+    '          options.replaceChildren(...states.map(({state_name}) => {\n'
+    '            const option = document.createElement("option");\n'
+    '            option.value = state_name;\n'
+    '            return option;\n'
+    '          }));\n'
+    '          document.getElementById("state-picker").addEventListener("submit", event => {\n'
+    '            event.preventDefault();\n'
+    '            const state = states.find(row => row.state_name.toLowerCase() === search.value.trim().toLowerCase());\n'
+    '            if (!state) {\n'
+    '              message.textContent = "Choose a state from the list.";\n'
+    '              return;\n'
+    '            }\n'
+    '            editSelection(ids => ids.includes(state.state_id) ? ids : [...ids, state.state_id]);\n'
+    '            search.value = "";\n'
+    '          });\n'
+    '          view.addSignalListener("selected_state", (_, selection) => {\n'
+    '            message.textContent = "";\n'
+    '            renderChips(selection.state_id || []);\n'
+    '          });\n'
+    '          renderChips(currentIds());\n'
+    '          const overviewItem = item => item?.mark?.name === "overview_map_group" ||\n'
+    '            item?.mark?.group?.mark?.name === "overview_map_group";\n' 
+    '          const findGroup = (node, name) => {\n'
+    '            if (node.mark?.name === name) return node;\n'
+    '            for (const child of node.items || []) {\n'
+    '              const group = findGroup(child, name);\n'
+    '              if (group) return group;\n'
+    '            }\n'
+    '          };\n'
+    '          const overview = findGroup(view.scenegraph().root, "overview_map_group");\n'
+    '          const controls = document.getElementById("overview-controls");\n'
+    '          const reset = document.getElementById("zoom-reset");\n'
+    '          el.append(controls);\n'
+    '          controls.hidden = false;\n'
+    '\n'
+    '          function groupOrigin(item) {\n'
+    '            const [x, y] = view.origin();\n'
+    '            let left = x, top = y;\n'
+    '            for (let group = item; group; group = group.mark.group) {\n'
+    '              left += group.x || 0;\n'
+    '              top += group.y || 0;\n'
+    '            }\n'
+    '            return [left, top];\n'
+    '          }\n'
+    '\n'
+    '          function placeControls() {\n'
+    '            const [left, top] = groupOrigin(overview);\n'
+    '            const chartRect = chart.getBoundingClientRect();\n'
+    '            const visRect = el.getBoundingClientRect();\n'
+    '            const scale = parseFloat(el.style.zoom) || 1;\n'
+    '            controls.style.left = ((chartRect.left - visRect.left) / scale + left + overview.width - controls.offsetWidth - 8) + "px";\n'
+    '            controls.style.top = ((chartRect.top - visRect.top) / scale + top + 8) + "px";\n'
+    '          }\n'
+    '          resizeObserver.observe(controls);\n'
+    '          view.addResizeListener(placeControls);\n'
+    '          placeControls();\n'
+    '\n'
+    '          function mapPosition(event) {\n'
+    '            const rect = chart.getBoundingClientRect();\n'
+    '            const scale = parseFloat(el.style.zoom) || 1;\n'
+    '            const [left, top] = groupOrigin(overview);\n'
+    '            return [(event.clientX - rect.left) / scale - left,\n'
+    '              (event.clientY - rect.top) / scale - top];\n'
+    '          }\n'
+    '          const insideMap = (x, y) => x >= 0 && x <= overview.width && y >= 0 && y <= overview.height;\n'
+    '          let drag = null;\n'
+    '          let dragged = false;\n'
+    '          const updateMap = (zoom, x, y) => {\n'
+    '            const bound = (value, limit) => Math.max(-limit, Math.min(limit, value));\n'
+    '            const panX = bound(x, 100 + 420 * (zoom - 1));\n'
+    '            const panY = bound(y, 60 + 230 * (zoom - 1));\n'
+    '            view.signal("overview_zoom", zoom)\n'
+    '              .signal("overview_pan_x", panX)\n'
+    '              .signal("overview_pan_y", panY)\n'
+    '              .runAsync().catch(error => showError(el, error));\n'
+    '            reset.disabled = zoom === 1 && panX === 0 && panY === 0;\n'
+    '          };\n'
+    '          reset.onclick = () => updateMap(1, 0, 0);\n'
+    '          chart.addEventListener("wheel", event => {\n'
+    '            const [x, y] = mapPosition(event);\n'
+    '            if (!insideMap(x, y)) return;\n'
+    '            event.preventDefault();\n'
+    '            const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? overview.height : 1);\n'
+    '            const previous = view.signal("overview_zoom");\n'
+    '            const zoom = Math.max(1, Math.min(8, previous * Math.exp(-delta * 0.002)));\n'
+    '            if (zoom === previous) return;\n'
+    '            const ratio = zoom / previous;\n'
+    '            const anchorX = x - overview.width / 2;\n'
+    '            const anchorY = y - overview.height / 2;\n'
+    '            updateMap(zoom,\n'
+    '              anchorX + (view.signal("overview_pan_x") - anchorX) * ratio,\n'
+    '              anchorY + (view.signal("overview_pan_y") - anchorY) * ratio);\n'
+    '          }, {passive: false});\n'
+    '          chart.addEventListener("mousedown", event => {\n'
+    '            dragged = false;\n'
+    '            if (event.button !== 0 || !insideMap(...mapPosition(event))) return;\n'
+    '            drag = {\n'
+    '              x: event.clientX, y: event.clientY,\n'
+    '              panX: view.signal("overview_pan_x"), panY: view.signal("overview_pan_y"),\n'
+    '            };\n'
+    '          });\n'
+    '          window.addEventListener("mousemove", event => {\n'
+    '            if (!drag) {\n'
+    '              chart.style.cursor = event.target === chart || chart.contains(event.target)\n'
+    '                ? (insideMap(...mapPosition(event)) ? "grab" : "") : "";\n'
+    '              return;\n'
+    '            }\n'
+    '            const dx = event.clientX - drag.x;\n'
+    '            const dy = event.clientY - drag.y;\n'
+    '            if (!dragged && Math.hypot(dx, dy) < 4) return;\n'
+    '            dragged = true;\n'
+    '            chart.style.cursor = "grabbing";\n'
+    '            const scale = parseFloat(el.style.zoom) || 1;\n'
+    '            updateMap(view.signal("overview_zoom"), drag.panX + dx / scale, drag.panY + dy / scale);\n'
+    '          });\n'
+    '          function endDrag() {\n'
+    '            drag = null;\n'
+    '            chart.style.cursor = "";\n'
+    '          }\n'
+    '          window.addEventListener("mouseup", endDrag);\n'
+    '          window.addEventListener("blur", endDrag);\n'
+    f'          const waterProfiles = {water_profiles_json};\n'
+    '          const waterToggle = document.getElementById("water-toggle");\n'
+    '          const waterPanel = document.getElementById("water-panel");\n'
+    '          const waterStatus = document.getElementById("water-status");\n'
+    '          const waterMessage = document.getElementById("water-message");\n'
+    '          const waterResults = document.getElementById("water-results");\n'
+    '          const waterSites = document.getElementById("water-sites");\n'
+    '          const waterSpace = findGroup(view.scenegraph().root, "water_space_group");\n'
+    '          el.append(waterPanel);\n'
+    '          waterPanel.style.width = waterSpace.width + "px";\n'
+    '\n'
+    '          function placeWater() {\n'
+    '            const [left, top] = groupOrigin(waterSpace);\n'
+    '            const chartRect = chart.getBoundingClientRect();\n'
+    '            const visRect = el.getBoundingClientRect();\n'
+    '            const scale = parseFloat(el.style.zoom) || 1;\n'
+    '            waterPanel.style.left = ((chartRect.left - visRect.left) / scale + left) + "px";\n'
+    '            waterPanel.style.top = ((chartRect.top - visRect.top) / scale + top) + "px";\n'
+    '            const height = waterPanel.offsetHeight;\n'
+    '            if (view.signal("water_space_height") !== height) {\n'
+    '              view.signal("water_space_height", height).runAsync().catch(error => showError(el, error));\n'
+    '            }\n'
+    '          }\n'
+    '          resizeObserver.observe(waterPanel);\n'
+    '          view.addResizeListener(placeWater);\n'
+    '          const comparedSites = new Map();\n'
+    '          const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];\n'
+    '          const colors = ["#2166ac", "#a44215", "#23755e"];\n'
+    '          const dashPatterns = [[1, 0], [7, 4], [2, 3]];\n'
+    '          let waterView;\n'
+    '          let waterRenderQueue = Promise.resolve();\n'
+    '\n'
+    '          function renderWater() {\n'
+    '            waterSites.replaceChildren();\n'
+    '            const rows = [];\n'
+    '            const slots = [...comparedSites.values()].map(site => site.slot);\n'
+    '            for (const [id, site] of comparedSites) {\n'
+    '              const label = site.name + " (" + site.state + ")";\n'
+    '              const remove = document.createElement("button");\n'
+    '              remove.type = "button";\n'
+    '              remove.textContent = label + " ×";\n'
+    '              remove.style.borderLeft = "4px solid " + colors[site.slot];\n'
+    '              remove.setAttribute("aria-label", "Remove " + label);\n'
+    '              remove.onclick = () => {\n'
+    '                comparedSites.delete(id);\n'
+    '                waterMessage.textContent = "";\n'
+    '                renderWater();\n'
+    '              };\n'
+    '              waterSites.append(remove);\n'
+    '              months.forEach((month, index) => {\n'
+    '                const key = "bws_" + String(index + 1).padStart(2, "0") + "_score";\n'
+    '                rows.push({month, score: waterProfiles[id]?.[key] ?? null, facility: label, slot: site.slot});\n'
+    '              });\n'
+    '            }\n'
+    '            waterResults.hidden = slots.length === 0;\n'
+    '            waterRenderQueue = waterRenderQueue.then(async () => {\n'
+    '              if (rows.length) {\n'
+    '                if (!waterView) {\n'
+    '                  const monthlyChart = {\n'
+    '                    width: waterSpace.width - 100, height: 235,\n'
+    '                    data: {name: "monthly_scores"},\n'
+    '                    mark: {type: "line", point: {filled: true, size: 52}, strokeWidth: 2.5, invalid: "break-paths-show-path-domains"},\n'
+    '                    encoding: {\n'
+    '                      x: {field: "month", type: "ordinal", sort: months, axis: {title: null, labelAngle: 0, ticks: false}},\n'
+    '                      y: {field: "score", type: "quantitative", scale: {domain: [0, 5]}, axis: {title: "Water stress score (0–5)", tickMinStep: 1}},\n'
+    '                      color: {field: "slot", type: "nominal", scale: {domain: [0, 1, 2], range: colors}, legend: null},\n'
+    '                      strokeDash: {field: "slot", type: "nominal", scale: {domain: [0, 1, 2], range: dashPatterns}, legend: null},\n'
+    '                      tooltip: [\n'
+    '                        {field: "facility", title: "Facility"},\n'
+    '                        {field: "month", title: "Month"},\n'
+    '                        {field: "score", type: "quantitative", title: "Water stress score", format: ".2f"}\n'
+    '                      ]\n'
+    '                    },\n'
+    '                    config: {view: {stroke: null}, axis: {gridColor: "#e5ebed", labelColor: "#415461", titleColor: "#243746"}}\n'
+    '                  };\n'
+    '                  ({view: waterView} = await vegaEmbed(waterResults, monthlyChart, {mode: "vega-lite", renderer: "svg", actions: false}));\n'
+    '                }\n'
+    '                await waterView.change("monthly_scores", vega.changeset().remove(() => true).insert(rows)).runAsync();\n'
+    '              }\n'
+    '              placeWater();\n'
+    '            }).catch(error => { waterMessage.textContent = "Could not draw the water stress chart."; console.error(error); });\n'
+    '          }\n'
+    '\n'
+    '          waterToggle.onclick = () => {\n'
+    '            const enabled = waterPanel.hidden;\n'
+    '            waterPanel.hidden = !enabled;\n'
+    '            placeWater();\n'
+    '            waterToggle.setAttribute("aria-expanded", String(enabled));\n'
+    '            view.signal("water_mode", enabled).runAsync().catch(error => showError(el, error));\n'
+    '          };\n'
+    '          waterStatus.onchange = () => {\n'
+    '            view.signal("water_status", waterStatus.value).runAsync().catch(error => showError(el, error));\n'
+    '          };\n'
+    '          function compareWaterSite(site) {\n'
+    '            const id = site.id;\n'
+    '            if (comparedSites.has(id)) {\n'
+    '              comparedSites.delete(id);\n'
+    '            } else if (comparedSites.size >= 3) {\n'
+    '              waterMessage.textContent = "Remove a facility before adding another.";\n'
+    '              return;\n'
+    '            } else {\n'
+    '              const usedSlots = new Set([...comparedSites.values()].map(other => other.slot));\n'
+    '              comparedSites.set(id, {...site, slot: [0, 1, 2].find(slot => !usedSlots.has(slot))});\n'
+    '            }\n'
+    '            waterMessage.textContent = waterProfiles[id] ? "" : "No monthly basin scores are available for " + site.name + ".";\n'
+    '            renderWater();\n'
+    '          }\n'
+    '          view.addEventListener("click", (_, item) => {\n'
+    '            if (dragged) { dragged = false; return; }\n'
+    '            if (!waterPanel.hidden && item?.mark?.name === "overview_facilities_marks") {\n'
+    '              compareWaterSite(item.datum);\n'
+    '              return;\n'
+    '            }\n'
+    '            if (!overviewItem(item) && item?.mark?.name !== "state_ranking_marks") return;\n'
+    '            const id = item.datum?.state_id;\n'
+    '            if (!stateNames.has(id)) return;\n'
+    '            editSelection(ids => ids.includes(id) ? ids.filter(value => value !== id) : [...ids, id]);\n'
+    '          });\n'
     f'          const legendMetrics = {legend_metrics_json};\n'
     '          const schemeColors = {\n'
     '            blues: ["#deebf7", "#9ecae1", "#3182bd"],\n'
@@ -1114,19 +1548,19 @@ interactive_embed_script = (
     '            const item = legendMetrics[metric];\n'
     '            document.getElementById("map-legend-title").textContent = item.title;\n'
     '            document.getElementById("map-legend-scale").style.background =\n'
-    '              "linear-gradient(to top, " + schemeColors[item.scheme].join(", ") + ")";\n'
+    '              "linear-gradient(to right, " + schemeColors[item.scheme].join(", ") + ")";\n'
     '            document.getElementById("map-legend-min").textContent = formatLegendValue(item.min, item.format);\n'
     '            document.getElementById("map-legend-max").textContent = formatLegendValue(item.max, item.format);\n'
     '            document.getElementById("map-legend-labels").setAttribute("aria-label",\n'
     '              formatLegendValue(item.min, item.format) + " to " + formatLegendValue(item.max, item.format));\n'
     '          };\n'
     '          updateLegend(view.signal("map_metric"));\n'
-    '          document.querySelectorAll("#metric-menu button").forEach(button => {\n'
+    '          document.querySelectorAll("#metric-menu [data-metric]").forEach(button => {\n'
     '            button.addEventListener("click", () => {\n'
     '              view.signal("map_metric", button.dataset.metric).runAsync().then(() => {\n'
     '                updateLegend(button.dataset.metric);\n'
     '              });\n'
-    '              document.querySelectorAll("#metric-menu button").forEach(option => {\n'
+    '              document.querySelectorAll("#metric-menu [data-metric]").forEach(option => {\n'
     '                option.setAttribute("aria-pressed", String(option === button));\n'
     '              });\n'
     '            });\n'
@@ -1140,15 +1574,6 @@ dashboard_path.write_text(
     dashboard_html.replace(
         embed_script,
         interactive_embed_script,
-        1,
-    ).replace(
-        embed_style_marker,
-        f'{embed_style_marker}      justify-content: center;\n'
-        '      align-items: center;\n'
-        '      width: 100vw;\n'
-        '      height: 100vh;\n'
-        '      overflow: hidden;\n'
-        '      zoom: 1.3;\n',
         1,
     ),
     encoding='utf-8',
