@@ -337,7 +337,7 @@ profile_df = pd.DataFrame(profile_records)
 # Use Compute Atlas for the point layer: it provides facility-level coordinates,
 # status, and source links. Limit it to data centers in the 50 states and DC.
 point_columns = {
-    'id', 'name', 'operator', 'facility_type', 'status', 'confidence', 'city', 'state',
+    'id', 'name', 'operator', 'facility_type', 'status', 'confidence', 'city', 'county', 'state',
     'lat', 'lon', 'capacity_operational_mw', 'capacity_planned_mw',
     'source_count', 'detail_url', 'primary_source_url',
 }
@@ -367,6 +367,92 @@ if (
     or not points_df['longitude'].between(-180, 180).all()
 ):
     raise ValueError(f'Invalid coordinates found in {atlas_path}')
+
+def county_key(names):
+    return (
+        names.astype('string')
+        .str.split(',', n=1).str[0]
+        .str.casefold()
+        .str.replace(r'\s*\(independent city\)$', ' city', regex=True)
+        .str.replace(
+            r'\b(county/city|county|parish|borough|census area|municipality)\b',
+            ' ',
+            regex=True,
+        )
+        .str.replace(r'[^a-z0-9]+', ' ', regex=True)
+        .str.strip()
+    )
+
+
+county_reference = county_unemployment[
+    ['county_id', 'state_id', 'county_name']
+].copy()
+county_reference['county_key'] = county_key(county_reference['county_name'])
+if county_reference.duplicated(['state_id', 'county_key']).any():
+    raise ValueError('County unemployment reference has ambiguous normalized county names')
+
+atlas_counties = points_df[['id', 'state_id', 'county', 'state']].copy()
+atlas_counties['county_key'] = county_key(atlas_counties['county'])
+atlas_counties = atlas_counties.merge(
+    county_reference[['county_id', 'state_id', 'county_key']],
+    on=['state_id', 'county_key'],
+    how='left',
+    validate='many_to_one',
+)
+
+# Connecticut transitioned from counties to planning regions; use legacy county
+# FIPS for the county boundaries in the map. La Porte is one word in the LAUS file.
+county_fips_aliases = {
+    ('CT', 'fairfield'): (9001, 'Fairfield County, CT'),
+    ('CT', 'hartford'): (9003, 'Hartford County, CT'),
+    ('CT', 'new haven'): (9009, 'New Haven County, CT'),
+    ('CT', 'new london'): (9011, 'New London County, CT'),
+    ('IN', 'la porte'): (18091, 'LaPorte County, IN'),
+}
+alias_lookup = {
+    (state_ids[state], county): county_id
+    for (state, county), (county_id, _) in county_fips_aliases.items()
+}
+unmatched_counties = atlas_counties['county_id'].isna()
+atlas_counties.loc[unmatched_counties, 'county_id'] = [
+    alias_lookup.get((state_id, county), pd.NA)
+    for state_id, county in zip(
+        atlas_counties.loc[unmatched_counties, 'state_id'],
+        atlas_counties.loc[unmatched_counties, 'county_key'],
+    )
+]
+unmatched_county_facilities = int(atlas_counties['county_id'].isna().sum())
+atlas_county_counts = atlas_counties.dropna(subset=['county_id']).groupby(
+    'county_id', as_index=False,
+).size().rename(columns={'size': 'data_center_count'})
+county_map_data = county_reference[
+    ['county_id', 'state_id', 'county_name']
+].drop_duplicates('county_id').copy()
+missing_alias_rows = [
+    {
+        'county_id': county_id,
+        'state_id': state_ids[state],
+        'county_name': county_name,
+    }
+    for (state, _), (county_id, county_name) in county_fips_aliases.items()
+    if county_id not in set(county_map_data['county_id'])
+]
+if missing_alias_rows:
+    county_map_data = pd.concat(
+        [county_map_data, pd.DataFrame(missing_alias_rows)],
+        ignore_index=True,
+    )
+county_map_data = county_map_data.merge(
+    atlas_county_counts,
+    on='county_id',
+    how='left',
+    validate='one_to_one',
+)
+county_map_data['data_center_count'] = county_map_data['data_center_count'].fillna(0).astype(int)
+county_map_data['state_name'] = county_map_data['state_id'].map(
+    {state_id: name for name, state_id in STATE_INFO.values()}
+)
+county_max_count = int(county_map_data['data_center_count'].max())
 overview_points_df = points_df.drop(columns='state_id')
 
 # Precomputed point-in-polygon join against WRI Aqueduct 4.0 baseline monthly basins.
@@ -389,6 +475,10 @@ map_pan_y = alt.param(name='overview_pan_y', value=0)
 map_metric = alt.param(
     name='map_metric',
     value='Data center count',
+)
+map_granularity = alt.param(
+    name='map_granularity',
+    value='state',
 )
 metric_value_expression = (
     "map_metric === 'Land price' ? datum.land_price : "
@@ -425,10 +515,15 @@ selected_state_predicate = {'param': 'selected_state'}
 
 state_layer = alt.Chart(states, name='overview_state_shapes').mark_geoshape(
     clip=True,
-    stroke='white',
     strokeWidth=0.5,
 ).encode(
     color=metric_color,
+    stroke=alt.condition(
+        click,
+        alt.value('white'),
+        alt.value('#111111'),
+        empty=False,
+    ),
     opacity=alt.condition(
         click,
         alt.value(1),
@@ -437,12 +532,6 @@ state_layer = alt.Chart(states, name='overview_state_shapes').mark_geoshape(
     tooltip=[
         alt.Tooltip('state_name:N', title='State'),
         alt.Tooltip('data_center_count:Q', title='Data centers', format=','),
-        alt.Tooltip(
-            'land_price:Q',
-            title=f'Agricultural land value ($/acre, {latest_land_price_year})',
-            format='$,.0f',
-        ),
-        alt.Tooltip('land_price_note:N', title='Land value data'),
         alt.Tooltip(
             'electricity_price:Q',
             title=f'Commercial electricity price (cents/kWh, {latest_electricity_year})',
@@ -480,7 +569,8 @@ state_layer = alt.Chart(states, name='overview_state_shapes').mark_geoshape(
 ).transform_calculate(
     metric_value=metric_value_expression,
 ).transform_filter(
-    "map_metric !== 'County unemployment rate'"
+    "map_metric !== 'County unemployment rate' && "
+    "!(map_metric === 'Data center count' && map_granularity === 'county')"
 ).add_params(
     click
 )
@@ -525,6 +615,38 @@ county_layer = alt.Chart(counties).mark_geoshape(
     ),
 ).transform_filter(
     "map_metric === 'County unemployment rate'"
+)
+
+county_count_layer = alt.Chart(counties, name='county_data_center_counts').mark_geoshape(
+    clip=True,
+    stroke='white',
+    strokeWidth=0.25,
+).encode(
+    color=alt.Color(
+        'data_center_count:Q',
+        title='Data centers (Compute Atlas)',
+        scale=alt.Scale(domain=[0, county_max_count], scheme='blues'),
+        legend=None,
+    ),
+    opacity=alt.condition(
+        click,
+        alt.value(1),
+        alt.value(0.12),
+    ),
+    tooltip=[
+        alt.Tooltip('county_name:N', title='County'),
+        alt.Tooltip('state_name:N', title='State'),
+        alt.Tooltip('data_center_count:Q', title='Compute Atlas data centers', format=','),
+    ],
+).transform_lookup(
+    lookup='id',
+    from_=alt.LookupData(
+        county_map_data,
+        'county_id',
+        ['county_id', 'state_id', 'county_name', 'data_center_count'],
+    ),
+).transform_filter(
+    "map_metric === 'Data center count' && map_granularity === 'county'"
 )
 
 detail_state_layer = alt.Chart(states).mark_geoshape(
@@ -603,6 +725,7 @@ point_layer = alt.Chart(overview_points_df, name='overview_facilities').mark_cir
         alt.Tooltip('name:N', title='Data center'),
         alt.Tooltip('company:N', title='Company'),
         alt.Tooltip('city:N', title='City'),
+        alt.Tooltip('county:N', title='County'),
         alt.Tooltip('state:N', title='State'),
         alt.Tooltip('status:N', title='Status'),
         alt.Tooltip('confidence:N', title='Data confidence'),
@@ -637,6 +760,7 @@ detail_point_layer = alt.Chart(points_df).mark_circle(
         alt.Tooltip('name:N', title='Data center'),
         alt.Tooltip('company:N', title='Operator'),
         alt.Tooltip('city:N', title='City'),
+        alt.Tooltip('county:N', title='County'),
         alt.Tooltip('state:N', title='State'),
         alt.Tooltip('status:N', title='Status'),
         alt.Tooltip('confidence:N', title='Data confidence'),
@@ -647,12 +771,12 @@ detail_point_layer = alt.Chart(points_df).mark_circle(
         alt.Tooltip('detail_url:N', title='Facility details'),
     ],
 ).transform_filter(
-    'show_points'
+    'water_mode ? (water_status === "all" ? indexof(["operational", "under_construction", "permitted", "proposed"], datum.status) >= 0 : datum.status === water_status) : show_points'
 ).transform_filter(
     {'param': 'selected_state', 'empty': False},
 )
 
-map_chart = alt.layer(state_layer, county_layer, point_layer).project(
+map_chart = alt.layer(state_layer, county_layer, county_count_layer, point_layer).project(
     type='albersUsa',
     scale=alt.ExprRef(expr='990 * overview_zoom'),
     translate=alt.ExprRef(expr='[420 + 29 * overview_zoom + overview_pan_x, 230 - 3 * overview_zoom + overview_pan_y]'),
@@ -743,27 +867,24 @@ parallel_x_scale = alt.Scale(domain=[-0.6, 5.6], nice=False)
 parallel_y_scale = alt.Scale(domain=[-0.04, 1.1], nice=False)
 
 parallel_lines = alt.Chart(parallel_data).mark_line(
+    cursor='pointer',
     opacity=0.28,
 ).encode(
     x=alt.X('axis_x:Q', scale=parallel_x_scale, axis=None),
     y=alt.Y('normalized_value:Q', scale=parallel_y_scale, axis=None),
     detail='state_name:N',
     order=alt.Order('axis_x:Q'),
-    color=alt.condition(
-        selected_state_predicate,
-        alt.Color(
-            'state_name:N',
-            title='Selected state',
-            legend=None,
-            scale=alt.Scale(scheme='tableau20'),
-        ),
-        alt.value('#4b8b78'),
-        empty=False,
-    ),
+    color=alt.value('#4b8b78'),
     size=alt.condition(
         selected_state_predicate,
-        alt.value(6),
-        alt.value(1.5),
+        alt.value(2.5),
+        alt.value(0.65),
+        empty=False,
+    ),
+    opacity=alt.condition(
+        selected_state_predicate,
+        alt.value(0.9),
+        alt.value(0.24),
         empty=False,
     ),
     tooltip=[
@@ -844,7 +965,7 @@ parallel_chart = alt.layer(
             f'Numeric axes are scaled independently. '
             f'Latest data: land {latest_land_price_year}, electricity {latest_electricity_year}, '
             f'population {population_year}, unemployment 2025; water stress is average WRI facility score. '
-            f'Click up to 3 states to compare.'
+            f'Click up to 4 states to compare.'
         ),
     ),
 )
@@ -872,7 +993,10 @@ profile_bars = alt.Chart(profile_df).mark_bar(
     color=alt.Color(
         'state_name:N',
         title='Selected state',
-        scale=alt.Scale(domain=state_color_domain, scheme='tableau20'),
+        scale=alt.Scale(
+            domain=state_color_domain,
+            range=['#0072B2', '#D55E00', '#009E73'],
+        ),
     ),
     tooltip=[
         alt.Tooltip('state_name:N', title='State'),
@@ -968,6 +1092,7 @@ dashboard = alt.vconcat(
 ).add_params(
     show_points,
     map_metric,
+    map_granularity,
     water_mode,
     water_status,
     map_zoom,
@@ -1013,6 +1138,7 @@ legend_metrics = {
         'scheme': 'blues',
         'min': float(df['data_center_count'].min()),
         'max': float(df['data_center_count'].max()),
+        'county_max': county_max_count,
         'format': 'count',
     },
     'Land price': {
@@ -1091,6 +1217,9 @@ dashboard_styles = """
       color: #176b55;
       font-weight: 700;
     }
+    #map-granularity { display: inline-flex; gap: 2px; padding: 2px; border-radius: 6px; background: #e8edeb; }
+    #map-granularity button { padding: 6px 9px; }
+    #map-granularity[hidden] { display: none; }
     #toolbar-options {
       display: flex;
       flex-wrap: wrap;
@@ -1159,6 +1288,10 @@ dashboard_toolbar = """  <header id="dashboard-toolbar">
       <button type="button" data-metric="Water stress" aria-pressed="false">Water stress</button>
       <button type="button" data-metric="County unemployment rate" aria-pressed="false">County unemployment rate</button>
       <button id="water-toggle" type="button" aria-controls="water-panel" aria-expanded="false">Seasonal facility chart</button>
+      <div id="map-granularity" role="group" aria-label="Data center count map division" hidden>
+        <button type="button" data-granularity="state" aria-pressed="true">By state</button>
+        <button type="button" data-granularity="county" aria-pressed="false">By county</button>
+      </div>
     </nav>
     <div id="toolbar-options">
       <label><input id="show-points" type="checkbox"> Show Compute Atlas data center locations</label>
@@ -1170,6 +1303,7 @@ dashboard_toolbar = """  <header id="dashboard-toolbar">
       </form>
       <span id="selected-states" aria-label="Selected states"></span>
       <span id="selection-message" role="status"></span>
+      <span id="county-view-note" role="status" hidden></span>
     </div>
   </header>
   <main id="chart-frame">
@@ -1257,8 +1391,8 @@ interactive_embed_script = (
     '            selectionQueue = selectionQueue.then(async () => {\n'
     '              const before = currentIds();\n'
     '              const after = edit(before);\n'
-    '              if (after.length > 3) {\n'
-    '                message.textContent = "Remove a state before adding another (maximum three).";\n'
+    '              if (after.length > 4) {\n'
+    '                message.textContent = "Remove a state before adding another (maximum four).";\n'
     '                return;\n'
     '              }\n'
     '              message.textContent = "";\n'
@@ -1519,12 +1653,16 @@ interactive_embed_script = (
     '          }\n'
     '          view.addEventListener("click", (event, item) => {\n'
     '            if (dragged) { dragged = false; return; }\n'
-    '            if (!waterPanel.hidden && item?.mark?.name === "overview_facilities_marks") {\n'
-    '              compareWaterSite(item.datum);\n'
+    '            const datum = item?.datum;\n'
+    '            const isFacilityPoint = datum?.id != null && typeof datum?.name === "string" &&\n'
+    '              typeof datum?.state === "string";\n'
+    '            if (!waterPanel.hidden && isFacilityPoint) {\n'
+    '              compareWaterSite(datum);\n'
     '              return;\n'
     '            }\n'
-    '            if (!overviewItem(item) && item?.mark?.name !== "state_ranking_marks") return;\n'
-    '            const id = item.datum?.state_id ?? stateIds[item.datum?.state];\n'
+    '            const isParallelLine = Number.isInteger(datum?.state_id) && Number.isFinite(datum?.axis_x);\n'
+    '            if (!overviewItem(item) && item?.mark?.name !== "state_ranking_marks" && !isParallelLine) return;\n'
+    '            const id = datum?.state_id ?? stateIds[datum?.state];\n'
     '            if (!stateNames.has(id)) return;\n'
     '            editSelection(ids => {\n'
     '              if (event.ctrlKey || event.metaKey) {\n'
@@ -1534,6 +1672,7 @@ interactive_embed_script = (
     '            });\n'
     '          });\n'
     f'          const legendMetrics = {legend_metrics_json};\n'
+    f'          const countyOmitted = {unmatched_county_facilities};\n'
     '          const schemeColors = {\n'
     '            blues: ["#deebf7", "#9ecae1", "#3182bd"],\n'
     '            greens: ["#e5f5e0", "#a1d99b", "#31a354"],\n'
@@ -1546,22 +1685,45 @@ interactive_embed_script = (
     '            if (format === "percentile") return Math.round(value) + "th";\n'
     '            return Math.round(value).toLocaleString();\n'
     '          };\n'
-    '          const updateLegend = metric => {\n'
+    '          const granularityGroup = document.getElementById("map-granularity");\n'
+    '          const countyViewNote = document.getElementById("county-view-note");\n'
+    '          const updateMapControls = metric => {\n'
+    '            const countyMode = view.signal("map_granularity") === "county";\n'
+    '            granularityGroup.hidden = metric !== "Data center count";\n'
+    '            countyViewNote.hidden = metric !== "Data center count" || !countyMode || countyOmitted === 0;\n'
+    '            countyViewNote.textContent = countyOmitted + " Atlas facilities without county assignments are omitted.";\n'
+    '            granularityGroup.querySelectorAll("[data-granularity]").forEach(button => {\n'
+    '              button.setAttribute("aria-pressed", String(button.dataset.granularity === (countyMode ? "county" : "state")));\n'
+    '            });\n'
+    '          };\n'
+    '          const updateLegend = (metric, granularity = view.signal("map_granularity")) => {\n'
     '            const item = legendMetrics[metric];\n'
-    '            document.getElementById("map-legend-title").textContent = item.title;\n'
+    '            const max = metric === "Data center count" && granularity === "county" ? item.county_max : item.max;\n'
+    '            document.getElementById("map-legend-title").textContent = metric === "Data center count" && granularity === "county" ? "Data centers (Atlas)" : item.title;\n'
     '            document.getElementById("map-legend-scale").style.background =\n'
     '              "linear-gradient(to right, " + schemeColors[item.scheme].join(", ") + ")";\n'
-    '            document.getElementById("map-legend-min").textContent = formatLegendValue(item.min, item.format);\n'
-    '            document.getElementById("map-legend-max").textContent = formatLegendValue(item.max, item.format);\n'
+    '            const min = metric === "Data center count" && granularity === "county" ? 0 : item.min;\n'
+    '            document.getElementById("map-legend-min").textContent = formatLegendValue(min, item.format);\n'
+    '            document.getElementById("map-legend-max").textContent = formatLegendValue(max, item.format);\n'
     '            document.getElementById("map-legend-labels").setAttribute("aria-label",\n'
-    '              formatLegendValue(item.min, item.format) + " to " + formatLegendValue(item.max, item.format));\n'
+    '              formatLegendValue(min, item.format) + " to " + formatLegendValue(max, item.format));\n'
     '          };\n'
     '          updateLegend(view.signal("map_metric"));\n'
+    '          updateMapControls(view.signal("map_metric"));\n'
+    '          granularityGroup.querySelectorAll("[data-granularity]").forEach(button => {\n'
+    '            button.addEventListener("click", () => {\n'
+    '              view.signal("map_granularity", button.dataset.granularity).runAsync().then(() => {\n'
+    '                updateLegend(view.signal("map_metric"), button.dataset.granularity);\n'
+    '                updateMapControls(view.signal("map_metric"));\n'
+    '              }).catch(error => showError(el, error));\n'
+    '            });\n'
+    '          });\n'
     '          document.querySelectorAll("#metric-menu [data-metric]").forEach(button => {\n'
     '            button.addEventListener("click", () => {\n'
     '              view.signal("map_metric", button.dataset.metric).runAsync().then(() => {\n'
     '                updateLegend(button.dataset.metric);\n'
-    '              });\n'
+    '                updateMapControls(button.dataset.metric);\n'
+    '              }).catch(error => showError(el, error));\n'
     '              document.querySelectorAll("#metric-menu [data-metric]").forEach(option => {\n'
     '                option.setAttribute("aria-pressed", String(option === button));\n'
     '              });\n'
