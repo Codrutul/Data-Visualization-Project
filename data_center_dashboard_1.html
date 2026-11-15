@@ -71,6 +71,7 @@
       background: #fff;
       border: 1px solid #d9dfdc;
       border-radius: 5px;
+      transform: translateX(-55%)
     }
     #zoom-reset { font-size: 12px; white-space: nowrap; }
     #water-panel {
@@ -213,8 +214,8 @@
             selectionQueue = selectionQueue.then(async () => {
               const before = currentIds();
               const after = edit(before);
-              if (after.length > 3) {
-                message.textContent = "Remove a state before adding another (maximum three).";
+              if (after.length > 4) {
+                message.textContent = "Remove a state before adding another (maximum five).";
                 return;
               }
               message.textContent = "";
