@@ -1,1 +1,26 @@
 .idea
+
+# LaTeX compilation files
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.run.xml
+*.synctex.gz
+*.xdv
+*.toc
+*.lof
+*.lot
+*.nav
+*.snm
+*.vrb
+
+# MiKTeX / LaTeX temporary files
+*.synctex.gz(busy)
+*.bak
+
+/report/main.pdf
