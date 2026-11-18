@@ -1,0 +1,5 @@
+# latexmk configuration: XeLaTeX + biber. Run `latexmk` in this folder (or `latexmk -C` to clean).
+$pdf_mode = 5;                       # xelatex
+$xelatex = 'xelatex -interaction=nonstopmode -halt-on-error -file-line-error %O %S';
+$bibtex_use = 2;                     # run biber when needed
+$clean_ext = 'bbl run.xml synctex.gz';

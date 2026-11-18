@@ -1,0 +1,158 @@
+% Data Visualization course project report — LaTeX skeleton (Overleaf-ready)
+% ---------------------------------------------------------------------------
+% Compiler: XeLaTeX (Overleaf: Menu → Compiler → XeLaTeX). Bibliography: biber.
+% Locally: latexmk -xelatex main.tex   (the latexmkrc in this folder sets that up).
+%
+% The section list follows the hand-in guidelines; the page budget in each comment is
+% the guideline's suggestion for a 6-page body. The bibliography and the appendices do
+% not count towards the six pages. "Form follows function": rename, merge or add
+% sections if that tells the censors more about your work.
+\documentclass{aureport}
+\addbibresource{references.bib}
+
+\category{Data Visualization --- Course Project Report}
+\title{Data \: Centers \: in \: the \: U.S.}
+\author{Diana Sayed, 202204588 \and Codrin-Ionut Afloarei, 202602146 \and Silvia Nan, 202602134 \and Viviana-Iulia Gradu 202602135}
+\affiliation{Department of Computer Science, Aarhus University}
+\date{\today}
+\logo{\includegraphics[width=3.4cm]{figures/auseal_white.png}}
+\coverimage{figures/cover.png}   % any photo; it is scaled to cover the band and cropped. Leave empty for a solid cover.
+
+\begin{document}
+\makecover
+
+\section{Introduction and Motivation}
+% ~0.5 page. Who is the user, what do they decide, why does a visualization help,
+% and what data exists. End with one sentence on what you built.
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+
+\section{Requirements elicitation}
+% Optional section (not in the guideline list, but often where the work was).
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+
+\section{The visualization problem: data and task abstraction}
+% ~1 page. Data abstraction: attributes and their types (Stevens; L02/L05), size, what is
+% missing. Task abstraction: use a framework from L05 (Andrienko; Gotz & Zhou; Munzner's
+% what/why/how) and state each task in abstract terms.
+\subsection{Data}
+Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+
+\subsection{Tasks}
+\begin{table}[h]
+  \small
+  \begin{tabularx}{\linewidth}{@{}l Y Y Y@{}}
+    \toprule
+    \textbf{When} & \textbf{User's words (why)} & \textbf{Abstract task (what)} & \textbf{Views (how)} \\
+    \midrule
+    Morning          & \emph{``\ldots''} & Lookup on derived values            & View 1 \\
+    Weekly           & \emph{``\ldots''} & Compare stock against demand         & View 2 \\
+    After an odd day & \emph{``\ldots''} & Relation-seeking across attributes   & View 3 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Related work}
+% ~0.5 page. Existing solutions and the idioms you borrow, with references from the slides
+% or readings. Earlier course projects count (https://vis-au.github.io/student_projects/).
+Lorem ipsum dolor sit amet \parencite{shneiderman1996}, consectetur adipiscing elit, as \textcite{munzner2009} argues.
+
+\section{The solution}
+% ~1.5 pages. Describe each view, and justify every design decision with a first principle
+% from the lectures. A table with one section row per pipeline stage
+% (data analysis → filtering → mapping → rendering → interaction; L01/L07) works well.
+\subsection{View 1}
+\begin{figure}[htb]
+  \centering
+  \fbox{\parbox[c][5cm][c]{0.84\linewidth}{\centering screenshot}}
+  \caption{What the figure shows and which task it supports.}
+  \label{fig:view1}
+\end{figure}
+Lorem ipsum dolor sit amet, consectetur adipiscing elit (Figure~\ref{fig:view1}).
+
+\subsection{Design decisions along the visualization pipeline}\label{sec:principles}
+\begin{table}[h]
+  \footnotesize
+  \begin{tabularx}{\linewidth}{@{}Y Y@{}}
+    \toprule
+    \textbf{Decision in our visualization} & \textbf{Principle (lecture) and reference} \\
+    \midrule
+    \sectionrow{2}{Data analysis --- raw data $\rightarrow$ prepared data}
+    How the data was profiled, cleaned and joined & Three stages of preprocessing (L06) \\
+    \sectionrow{2}{Filtering --- prepared data $\rightarrow$ focus data}
+    What the user sees at once, and what a filter hides & Overview first, zoom and filter (L04) \parencite{shneiderman1996} \\
+    \sectionrow{2}{Mapping --- focus data $\rightarrow$ geometric data}
+    Which channel encodes which attribute & Expressiveness and effectiveness (L02) \\
+    \sectionrow{2}{Rendering --- geometric data $\rightarrow$ image}
+    Transparency, labels, layout & Overplotting (L03); labeling (L02) \\
+    \sectionrow{2}{Interaction --- feeding back into every stage}
+    Brushing and linking, details on demand & Multiple coordinated views (L04) \\
+    \sectionrow{2}{Perception $\rightarrow$ knowledge $\rightarrow$ exploration}
+    How the user turns the picture into a decision & Visual analytics (L13) \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Example use case}
+% ~1 page. Walk through at least one concrete instance where the visualization answers one
+% of the tasks. Real values, real screenshots, what the user learns.
+Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+
+\section{Challenges and limitations}
+% ~0.5 page. What was hard (data, elicitation, implementation), what the tool cannot do, and
+% what you would evaluate next.
+Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+
+\section{Group work and division of labour}
+% ~0.5 page for group work: who was responsible for what, and what was done jointly.
+\begin{table}[h]
+  \small
+  \begin{tabularx}{\linewidth}{@{}L{2.6cm} Y@{}}
+    \toprule
+    \textbf{Member} & \textbf{Responsible for (and where it shows in this report)} \\
+    \midrule
+    First Member  & \ldots \\
+    Second Member & \ldots \\
+    Third Member  & \ldots \\
+    Jointly       & \ldots \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{AI declaration}
+% Mandatory. Declare non-use explicitly as well. The DAISY categories below give a compact,
+% comparable format: state the level (none / low / medium / high) and what the tool did.
+Declared following the DAISY disclosure categories. Tool(s) used: \ldots
+\begin{table}[h]
+  \footnotesize
+  \begin{tabularx}{\linewidth}{@{}L{4.2cm} L{1.2cm} Y@{}}
+    \toprule
+    \textbf{Activity} & \textbf{Level} & \textbf{What the AI did} \\
+    \midrule
+    Ideation and brainstorming          & none & --- \\
+    Literature search and summarisation & none & --- \\
+    Coding assistance                   & none & --- \\
+    Analytical support                  & none & --- \\
+    Writing and drafting                & none & --- \\
+    Figures and tables                  & none & --- \\
+    Language editing and proofreading   & none & --- \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\printbibliography[title=Bibliography]
+
+% =====================================================================
+%  APPENDICES — do not count towards the page limit
+% =====================================================================
+\appendix
+
+\section{Interview material}\label{app:interview}
+Lorem ipsum dolor sit amet.
+
+\section{Data sources and cleaning}\label{app:data}
+Lorem ipsum dolor sit amet.
+
+\section{Full-page screenshots}\label{app:screens}
+Lorem ipsum dolor sit amet.
+
+\end{document}
