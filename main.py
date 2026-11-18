@@ -453,22 +453,50 @@ county_map_data['state_name'] = county_map_data['state_id'].map(
     {state_id: name for name, state_id in STATE_INFO.values()}
 )
 county_max_count = int(county_map_data['data_center_count'].max())
-overview_points_df = points_df.drop(columns='state_id')
+overview_points_df = atlas.loc[
+    atlas['facility_type'].isin(['data_center', 'power_generation', 'crypto_mining'])
+    & atlas['state'].isin(STATE_INFO),
+    list(point_columns),
+].copy().rename(columns={
+    'lat': 'latitude',
+    'lon': 'longitude',
+    'operator': 'company',
+})
+overview_points_df['state_id'] = overview_points_df['state'].map(state_ids)
+overview_points_df['latitude'] = pd.to_numeric(overview_points_df['latitude'], errors='raise')
+overview_points_df['longitude'] = pd.to_numeric(overview_points_df['longitude'], errors='raise')
+if (
+    overview_points_df[['latitude', 'longitude']].isna().any().any()
+    or not overview_points_df['latitude'].between(-90, 90).all()
+    or not overview_points_df['longitude'].between(-180, 180).all()
+):
+    raise ValueError(f'Invalid coordinates found in {atlas_path}')
 
 # Precomputed point-in-polygon join against WRI Aqueduct 4.0 baseline monthly basins.
 water_profiles_json = water_scores.set_index('id')[month_columns].to_json(orient='index')
 
 status_domain = ['operational', 'under_construction', 'permitted', 'proposed', 'cancelled']
-unknown_statuses = sorted(set(points_df['status'].dropna()) - set(status_domain))
+unknown_statuses = sorted(set(overview_points_df['status'].dropna()) - set(status_domain))
 if unknown_statuses:
     raise ValueError(f'Unrecognized facility statuses in {atlas_path}: {unknown_statuses}')
-points_df['status'] = points_df['status'].fillna('unknown')
-status_domain.append('unknown')
+if overview_points_df['status'].isna().any():
+    raise ValueError(f'Missing facility statuses found in {atlas_path}')
+facility_type_domain = sorted(overview_points_df['facility_type'].dropna().unique())
+facility_type_options_json = json.dumps([
+    {'value': facility_type, 'label': facility_type.replace('_', ' ').title()}
+    for facility_type in facility_type_domain
+])
+facility_status_options_json = json.dumps([
+    {'value': status, 'label': status.replace('_', ' ').title()}
+    for status in status_domain
+])
 
 show_points = alt.param(
     name='show_points',
     value=False,
 )
+facility_types = alt.param(name='facility_types', value=['data_center'])
+facility_statuses = alt.param(name='facility_statuses', value=[])
 map_zoom = alt.param(name='overview_zoom', value=1)
 map_pan_x = alt.param(name='overview_pan_x', value=0)
 map_pan_y = alt.param(name='overview_pan_y', value=0)
@@ -703,8 +731,9 @@ detail_state_layer = alt.Chart(states).mark_geoshape(
 
 water_mode = alt.param(name='water_mode', value=False)
 water_status = alt.param(name='water_status', value='all')
-point_layer = alt.Chart(overview_points_df, name='overview_facilities').mark_circle(
+point_layer = alt.Chart(overview_points_df, name='overview_facilities').mark_point(
     clip=True,
+    filled=True,
     size=36,
     opacity=0.8,
     stroke='white',
@@ -717,12 +746,21 @@ point_layer = alt.Chart(overview_points_df, name='overview_facilities').mark_cir
         legend=None,
         scale=alt.Scale(
             domain=status_domain,
-            range=['#238b45', '#ff7f0e', '#9467bd', '#1f77b4', '#7f7f7f', '#bdbdbd'],
+            range=['#238b45', '#ff7f0e', '#9467bd', '#1f77b4', '#7f7f7f'],
         ),
         sort=status_domain,
     ),
+    shape=alt.Shape(
+        'facility_type:N',
+        title='Facility type',
+        scale=alt.Scale(
+            domain=['data_center', 'power_generation', 'crypto_mining'],
+            range=['circle', 'square', 'triangle-up'],
+        ),
+    ),
     tooltip=[
-        alt.Tooltip('name:N', title='Data center'),
+        alt.Tooltip('name:N', title='Facility'),
+        alt.Tooltip('facility_type:N', title='Facility type'),
         alt.Tooltip('company:N', title='Company'),
         alt.Tooltip('city:N', title='City'),
         alt.Tooltip('county:N', title='County'),
@@ -736,10 +774,15 @@ point_layer = alt.Chart(overview_points_df, name='overview_facilities').mark_cir
         alt.Tooltip('detail_url:N', title='Facility details'),
     ],
 ).transform_filter(
-    'water_mode ? (water_status === "all" ? indexof(["operational", "under_construction", "permitted", "proposed"], datum.status) >= 0 : datum.status === water_status) : show_points'
+    '(water_mode ? (water_status === "all" ? indexof(["operational", "under_construction", "permitted", "proposed"], datum.status) >= 0 : datum.status === water_status) : show_points) && '
+    '(length(facility_types) === 0 || indexof(facility_types, datum.facility_type) >= 0) && '
+    '(length(facility_statuses) === 0 || indexof(facility_statuses, datum.status) >= 0)'
+).transform_filter(
+    selected_state_predicate
 )
 
-detail_point_layer = alt.Chart(points_df).mark_circle(
+detail_point_layer = alt.Chart(overview_points_df).mark_point(
+    filled=True,
     size=48,
     opacity=0.85,
     stroke='white',
@@ -752,12 +795,21 @@ detail_point_layer = alt.Chart(points_df).mark_circle(
         legend=None,
         scale=alt.Scale(
             domain=status_domain,
-            range=['#238b45', '#ff7f0e', '#9467bd', '#1f77b4', '#7f7f7f', '#bdbdbd'],
+            range=['#238b45', '#ff7f0e', '#9467bd', '#1f77b4', '#7f7f7f'],
         ),
         sort=status_domain,
     ),
+    shape=alt.Shape(
+        'facility_type:N',
+        legend=None,
+        scale=alt.Scale(
+            domain=['data_center', 'power_generation', 'crypto_mining'],
+            range=['circle', 'square', 'triangle-up'],
+        ),
+    ),
     tooltip=[
-        alt.Tooltip('name:N', title='Data center'),
+        alt.Tooltip('name:N', title='Facility'),
+        alt.Tooltip('facility_type:N', title='Facility type'),
         alt.Tooltip('company:N', title='Operator'),
         alt.Tooltip('city:N', title='City'),
         alt.Tooltip('county:N', title='County'),
@@ -771,7 +823,9 @@ detail_point_layer = alt.Chart(points_df).mark_circle(
         alt.Tooltip('detail_url:N', title='Facility details'),
     ],
 ).transform_filter(
-    'water_mode ? (water_status === "all" ? indexof(["operational", "under_construction", "permitted", "proposed"], datum.status) >= 0 : datum.status === water_status) : show_points'
+    '(water_mode ? (water_status === "all" ? indexof(["operational", "under_construction", "permitted", "proposed"], datum.status) >= 0 : datum.status === water_status) : show_points) && '
+    '(length(facility_types) === 0 || indexof(facility_types, datum.facility_type) >= 0) && '
+    '(length(facility_statuses) === 0 || indexof(facility_statuses, datum.status) >= 0)'
 ).transform_filter(
     {'param': 'selected_state', 'empty': False},
 )
@@ -970,7 +1024,7 @@ parallel_chart = alt.layer(
     ),
 )
 
-state_color_domain = sorted(df['state_name'].unique())
+state_comparison_colors = ['#0072B2', '#D55E00', '#009E73', '#CC79A7']
 profile_bars = alt.Chart(profile_df).mark_bar(
     cornerRadiusEnd=3,
 ).encode(
@@ -980,10 +1034,7 @@ profile_bars = alt.Chart(profile_df).mark_bar(
         sort=[metric[0] for metric in profile_metrics],
         axis=alt.Axis(labelAngle=0, labelLimit=100),
     ),
-    xOffset=alt.XOffset(
-        'state_name:N',
-        sort=state_color_domain,
-    ),
+    xOffset=alt.XOffset('state_name:N'),
     y=alt.Y(
         'percentile_rank:Q',
         title='Percentile among states',
@@ -991,11 +1042,11 @@ profile_bars = alt.Chart(profile_df).mark_bar(
         axis=alt.Axis(orient='left'),
     ),
     color=alt.Color(
-        'state_name:N',
-        title='Selected state',
+        'comparison_slot:O',
+        legend=None,
         scale=alt.Scale(
-            domain=state_color_domain,
-            range=['#0072B2', '#D55E00', '#009E73'],
+            domain=[0, 1, 2, 3],
+            range=state_comparison_colors,
         ),
     ),
     tooltip=[
@@ -1007,6 +1058,8 @@ profile_bars = alt.Chart(profile_df).mark_bar(
     ],
 ).transform_filter(
     {'param': 'selected_state', 'empty': False},
+).transform_calculate(
+    comparison_slot='indexof(selected_state.state_id || [], datum.state_id)',
 )
 
 profile_total = alt.Chart(profile_df).transform_filter(
@@ -1091,6 +1144,8 @@ dashboard = alt.vconcat(
     overview, alt.hconcat(detail_map, profile_chart, spacing=20), water_space, parallel_chart, spacing=24
 ).add_params(
     show_points,
+    facility_types,
+    facility_statuses,
     map_metric,
     map_granularity,
     water_mode,
@@ -1227,12 +1282,16 @@ dashboard_styles = """
       gap: 6px 20px;
       margin-top: 8px;
     }
+    .facility-filter { margin: 0; padding: 4px 8px 6px; border: 1px solid #d9dfdc; border-radius: 5px; }
+    .facility-filter legend { padding: 0 4px; font-weight: 700; }
     #state-picker, #selected-states { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
     #zoom-reset, #state-picker input, #state-picker button, #selected-states button {
       font: inherit; padding: 4px 8px; border: 1px solid #d9dfdc; border-radius: 5px;
     }
     #state-picker input { width: 10rem; max-width: 100%; }
     #zoom-reset, #state-picker button, #selected-states button { cursor: pointer; background: #eef3f1; color: #245448; }
+    .facility-filter-options { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+    .facility-filter-options label { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
     #map-legend {
       display: flex;
       flex-wrap: wrap;
@@ -1294,7 +1353,15 @@ dashboard_toolbar = """  <header id="dashboard-toolbar">
       </div>
     </nav>
     <div id="toolbar-options">
-      <label><input id="show-points" type="checkbox"> Show Compute Atlas data center locations</label>
+      <label><input id="show-points" type="checkbox"> Show Compute Atlas facility locations</label>
+      <fieldset id="facility-type-controls" class="facility-filter" hidden>
+        <legend>Facility type</legend>
+        <div id="facility-type-filter" class="facility-filter-options" role="group" aria-label="Facility type"></div>
+      </fieldset>
+      <fieldset id="facility-status-controls" class="facility-filter" hidden>
+        <legend>Status</legend>
+        <div id="facility-status-filter" class="facility-filter-options" role="group" aria-label="Status"></div>
+      </fieldset>
       <form id="state-picker">
         <label for="state-search">Add state</label>
         <input id="state-search" list="state-options" placeholder="Search states" autocomplete="off" required>
@@ -1372,12 +1439,49 @@ interactive_embed_script = (
     '\n'
     '          const points = document.getElementById("show-points");\n'
     '          points.checked = view.signal("show_points");\n'
+    '          const facilityTypeControls = document.getElementById("facility-type-controls");\n'
+    '          const facilityStatusControls = document.getElementById("facility-status-controls");\n'
+    '          const updateFacilityFilterVisibility = () => {\n'
+    '            facilityTypeControls.hidden = !points.checked;\n'
+    '            facilityStatusControls.hidden = !points.checked;\n'
+    '          };\n'
+    '          updateFacilityFilterVisibility();\n'
     '          points.addEventListener("change", () => {\n'
+    '            updateFacilityFilterVisibility();\n'
     '            view.signal("show_points", points.checked).runAsync().catch(error => showError(el, error));\n'
+    '          });\n'
+    f'          const facilityTypes = {facility_type_options_json};\n'
+    f'          const facilityStatuses = {facility_status_options_json};\n'
+    '          const facilityTypeFilter = document.getElementById("facility-type-filter");\n'
+    '          const facilityStatusFilter = document.getElementById("facility-status-filter");\n'
+    '          const addCheckboxes = (container, options, selectedValues, name) => {\n'
+    '            container.replaceChildren(...options.map(({label, value}) => {\n'
+    '              const id = name + "-" + value;\n'
+    '              const checkbox = document.createElement("input");\n'
+    '              checkbox.type = "checkbox";\n'
+    '              checkbox.id = id;\n'
+    '              checkbox.value = value;\n'
+    '              checkbox.checked = selectedValues.includes(value);\n'
+    '              const optionLabel = document.createElement("label");\n'
+    '              optionLabel.htmlFor = id;\n'
+    '              optionLabel.append(checkbox, document.createTextNode(label));\n'
+    '              return optionLabel;\n'
+    '            }));\n'
+    '          };\n'
+    '          addCheckboxes(facilityTypeFilter, facilityTypes, view.signal("facility_types"), "facility-type");\n'
+    '          addCheckboxes(facilityStatusFilter, facilityStatuses, view.signal("facility_statuses"), "facility-status");\n'
+    '          facilityTypeFilter.addEventListener("change", () => {\n'
+    '            const selected = Array.from(facilityTypeFilter.querySelectorAll("input:checked"), input => input.value);\n'
+    '            view.signal("facility_types", selected).runAsync().catch(error => showError(el, error));\n'
+    '          });\n'
+    '          facilityStatusFilter.addEventListener("change", () => {\n'
+    '            const selected = Array.from(facilityStatusFilter.querySelectorAll("input:checked"), input => input.value);\n'
+    '            view.signal("facility_statuses", selected).runAsync().catch(error => showError(el, error));\n'
     '          });\n'
     '\n'
     f'          const states = {state_options_json};\n'
     '          const stateNames = new Map(states.map(({state_id, state_name}) => [state_id, state_name]));\n'
+    f'          const stateColors = {json.dumps(state_comparison_colors)};\n'
     f'          const stateIds = {state_ids_json};\n'
     '          const store = "selected_state_store";\n'
     '          const unit = spec.params.find(param => param.name === "selected_state").views[0];\n'
@@ -1406,15 +1510,12 @@ interactive_embed_script = (
     '            }).catch(error => showError(el, error));\n'
     '          }\n'
     '          function renderChips(ids) {\n'
-    '            chips.replaceChildren(...ids.filter(id => stateNames.has(id)).map(id => {\n'
+    '            chips.replaceChildren(...ids.filter(id => stateNames.has(id)).map((id, index) => {\n'
     '              const name = stateNames.get(id);\n'
     '              const chip = document.createElement("button");\n'
     '              chip.type = "button";\n'
     '              chip.textContent = name + " ×";\n'
-    '              const comparisonScale = view.scale("color");\n'
-    '              if (comparisonScale?.domain().includes(name)) {\n'
-    '                chip.style.borderLeft = "4px solid " + comparisonScale(name);\n'
-    '              }\n' 
+    '              chip.style.borderLeft = "4px solid " + stateColors[index];\n'
     '              chip.setAttribute("aria-label", "Remove " + name);\n'
     '              chip.onclick = () => {\n'
     '                editSelection(previous => previous.filter(value => value !== id));\n'
