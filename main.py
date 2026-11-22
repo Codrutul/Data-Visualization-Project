@@ -1139,9 +1139,9 @@ water_space = alt.Chart(alt.Data(values=[{}]), name='water_space').mark_point(
     opacity=0
 ).properties(width=1150, height=0, view=alt.ViewConfig(stroke=None))
 
-overview = alt.hconcat(map_chart, ranking_chart, spacing=24).resolve_scale(color='independent')
+overview = alt.hconcat(ranking_chart, map_chart, spacing=8).resolve_scale(color='independent')
 dashboard = alt.vconcat(
-    overview, alt.hconcat(detail_map, profile_chart, spacing=20), water_space, parallel_chart, spacing=24
+    overview, water_space, spacing=8
 ).add_params(
     show_points,
     facility_types,
@@ -1239,21 +1239,26 @@ state_ids_json = json.dumps({
     for abbreviation, (_, state_id) in STATE_INFO.items()
 })
 dashboard_styles = """
-    html { overflow-x: clip; overflow-y: auto; }
-    body { margin: 0; }
+    html { overflow: hidden; }
+    body { margin: 0; overflow: hidden; }
     #dashboard-toolbar {
-      position: sticky;
+      position: fixed;
       top: 0;
+      left: 0;
       z-index: 10;
+      width: 190px;
+      height: 100vh;
+      box-sizing: border-box;
       padding: 10px 16px;
       background: #fff;
-      border-bottom: 1px solid #d9dfdc;
+      border-right: 1px solid #d9dfdc;
+      overflow-y: auto;
       font: 14px/1.35 Arial, sans-serif;
     }
     #metric-menu {
       display: flex;
-      flex-wrap: wrap;
-      align-items: center;
+      flex-direction: column;
+      align-items: stretch;
       gap: 6px;
     }
     #metric-menu h2 { margin: 0 6px 0 0; font-size: 14px; }
@@ -1277,8 +1282,8 @@ dashboard_styles = """
     #map-granularity[hidden] { display: none; }
     #toolbar-options {
       display: flex;
-      flex-wrap: wrap;
-      align-items: center;
+      flex-direction: column;
+      align-items: stretch;
       gap: 6px 20px;
       margin-top: 8px;
     }
@@ -1302,7 +1307,18 @@ dashboard_styles = """
     #map-legend-title { font-weight: 700; }
     #map-legend-content, #map-legend-labels { display: flex; align-items: center; gap: 6px; }
     #map-legend-scale { width: 88px; height: 10px; border-radius: 3px; }
-    #chart-frame { margin: 12px; }
+    #chart-frame {
+      position: fixed;
+      left: 190px;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      margin: 0;
+      box-sizing: border-box;
+      height: 100vh;
+      padding: 8px;
+      overflow: hidden;
+    }
     #overview-controls:not([hidden]) {
       position: absolute;
       z-index: 1;
