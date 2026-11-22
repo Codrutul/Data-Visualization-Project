@@ -82,18 +82,21 @@
       margin: 0;
       box-sizing: border-box;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       grid-template-rows: calc(50vh - 12px) calc(50vh - 12px);
       gap: 8px;
       height: 100vh;
       padding: 8px;
     }
     #ranking-chart {
-      grid-column: 1;
+      grid-column: 1 / 2;
       grid-row: 1;
       min-width: 0;
       height: 100%;
       box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       overflow: hidden;
       border: 1px solid #d9dfdc;
       border-radius: 9px;
@@ -131,8 +134,11 @@
     #zoom-reset:disabled { opacity: 0.65; cursor: default; }
     #chart-frame #vis { position: relative; display: block; width: max-content; margin-inline: auto; }
     #chart-frame #vis {
-      grid-column: 2;
+      grid-column: 2 / 5;
       grid-row: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       width: 100%;
       max-width: 100%;
       height: 100%;
@@ -147,7 +153,7 @@
     #vis .vega-actions, #vis details { display: none; }
 /* The scatterplot is a separate, linked visualization at the END of the page. */
     #county-scatter-panel {
-  grid-column: 1 / 2;
+  grid-column: 1 / 3;
   grid-row: 2;
   min-width: 0;
   max-width: none;
@@ -159,9 +165,7 @@
   border-radius: 9px;
   background: white; color: #243746; font: 14px/1.45 Arial, sans-serif;
 }
-    #county-scatter-panel h2 { margin: 0 0 5px; font-size: 21px; }
-    #county-scatter-panel .scatter-lead { margin: 0 0 18px; color: #536576; }
-    .scatter-controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; }
+    .scatter-controls { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: end; }
     .scatter-controls label { display: grid; gap: 5px; font-weight: 600; font-size: 13px; }
     .scatter-controls select {
       width: 230px; max-width: 100%; box-sizing: border-box; min-height: 37px;
@@ -171,7 +175,7 @@
     .scatter-controls select:focus-visible, #county-scatter-panel button:focus-visible {
       outline: 3px solid #0072b2; outline-offset: 2px;
     }
-    #county-scatter-vis { width: 100%; height: calc(50vh - 210px); min-height: 150px; max-height: 260px; overflow: hidden; }
+    #county-scatter-vis { width: 100%; height: calc(50vh - 80px); min-height: 150px; max-height: 400px; overflow: hidden; }
     #county-scatter-panel .scatter-meta { margin: 2px 0 8px; color: #536576; }
     #county-scatter-panel .scatter-hint { margin: 0 0 4px; color: #536576; font-size: 12px; }
     #scatter-selection-list { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 9px 0; }
@@ -206,7 +210,7 @@
     }
 
     #comparison-dock {
-      grid-column: 2;
+      grid-column: 3 / 5;
       grid-row: 2;
       min-width: 0;
       height: calc(50vh - 12px);
@@ -223,7 +227,6 @@
       gap: 6px;
       height: 32px;
     }
-    #comparison-controls h2 { margin: 0 8px 0 0; font-size: 15px; }
     #comparison-controls button {
       border: 1px solid #d9dfdc;
       border-radius: 5px;
@@ -238,7 +241,7 @@
       color: #176b55;
       font-weight: 700;
     }
-    #comparison-chart { height: calc(50vh - 60px); width: 100%; }
+    #comparison-chart { height: calc(50vh - 40px); width: 100%; }
   </style>
   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega@6"></script>
   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega-lite@6.4.1"></script>
@@ -300,9 +303,7 @@
     </section>
     <div id="vis"></div>
     <div id="ranking-chart" aria-label="Top 10 states"></div>
-    <section id="county-scatter-panel" aria-labelledby="scatter-heading">
-      <h2 id="scatter-heading">County-Level Relationships</h2>
-      <p class="scatter-lead">Compare county characteristics. Select or brush points to locate counties on the map above.</p>
+    <section id="county-scatter-panel" aria-label="County-level scatterplot">
       <div class="scatter-controls">
         <label for="scatter-x-select">X-axis
           <select id="scatter-x-select"></select>
@@ -333,7 +334,6 @@
 
     <section id="comparison-dock" aria-label="State comparison chart">
       <div id="comparison-controls">
-        <h2>State comparison</h2>
         <button type="button" data-comparison="bars" aria-pressed="true">Multiple bar chart</button>
         <button type="button" data-comparison="parallel" aria-pressed="false">Parallel coordinates</button>
       </div>
@@ -711,13 +711,15 @@ window.installCountyScatter = function installCountyScatter({mapView, reportErro
       const rankingSpec = spec.vconcat[0].hconcat[0];
       const overviewSpec = spec.vconcat[0].hconcat[1];
       const waterSpaceSpec = spec.vconcat[1];
-      rankingSpec.height = 520;
+      rankingSpec.height = 360;
       rankingSpec.width = 180;
       overviewSpec.title = "US Overview (click states to add or remove; up to four)";
-      overviewSpec.height = 520;
-      overviewSpec.width = 840;
+      overviewSpec.height = 430;
+      overviewSpec.width = 760;
+      overviewSpec.projection.scale.expr = "740 * overview_zoom";
       overviewSpec.projection.translate.expr =
-        "[420 + 29 * overview_zoom + overview_pan_x, 280 - 3 * overview_zoom + overview_pan_y]";
+        "[380 + 29 * overview_zoom + overview_pan_x, 235 - 3 * overview_zoom + overview_pan_y]";
+      waterSpaceSpec.width = overviewSpec.width;
       spec = {
         vconcat: [overviewSpec, waterSpaceSpec],
         params: spec.params,
@@ -729,20 +731,19 @@ window.installCountyScatter = function installCountyScatter({mapView, reportErro
           const frame = document.getElementById("chart-frame");
           const chart = el.querySelector("canvas.marks, svg.marks");
           const fitChart = () => {
-            if (!chart) return;
-            if (chart.offsetWidth > 0) {
-              el.style.zoom = Math.min(
-                1,
-                el.clientWidth / el.offsetWidth,
-                el.clientHeight / el.offsetHeight
-              );
-            }
+            if (!chart || chart.offsetWidth === 0) return;
+            el.style.zoom = Math.min(
+              1,
+              el.clientWidth / el.offsetWidth,
+              el.clientHeight / el.offsetHeight
+            );
           };
           const resizeObserver = new ResizeObserver(() => {
             fitChart();
             placeControls();
           });
           resizeObserver.observe(frame);
+          resizeObserver.observe(el);
           resizeObserver.observe(chart);
           fitChart();
 
@@ -821,6 +822,8 @@ window.installCountyScatter = function installCountyScatter({mapView, reportErro
 
           const comparisonParallelSpec = {"layer":[{"data":{"name":"data-18fbacfa1d67db3807e7d6bf17311774"},"mark":{"type":"line","cursor":"pointer","opacity":0.28},"encoding":{"color":{"value":"#4b8b78"},"detail":{"field":"state_name","type":"nominal"},"opacity":0.9,"order":{"field":"axis_x","type":"quantitative"},"size":2.5,"tooltip":[{"field":"state_id","title":"State ID","type":"quantitative"},{"field":"state_name","title":"State","type":"nominal"},{"field":"data_center_count","format":",","title":"Data centers","type":"quantitative"},{"field":"land_price","format":"$,.0f","title":"Land value ($/acre)","type":"quantitative"},{"field":"land_price_note","title":"Land value source","type":"nominal"},{"field":"electricity_price","format":".2f","title":"Commercial electricity (cents/kWh)","type":"quantitative"},{"field":"population","format":",","title":"Population (2025)","type":"quantitative"},{"field":"unemployment_rate","format":".2f","title":"Weighted unemployment rate (2025, %)","type":"quantitative"},{"field":"water_stress","format":".2f","title":"Average annual water stress (WRI, 0-5)","type":"quantitative"}],"x":{"axis":null,"field":"axis_x","scale":{"domain":[-0.6,5.6],"nice":false},"type":"quantitative"},"y":{"axis":null,"field":"normalized_value","scale":{"domain":[-0.04,1.1],"nice":false},"type":"quantitative"}},"transform":[{"filter":"indexof(comparison_state_ids, datum.state_id) >= 0"}]},{"data":{"name":"data-bad2e703488a7fcee23d1f1b2276bf65"},"mark":{"type":"rule","color":"#9ba7a3","strokeWidth":1},"encoding":{"x":{"axis":null,"field":"axis_x","scale":{"domain":[-0.6,5.6],"nice":false},"type":"quantitative"},"y":{"axis":null,"field":"axis_start","scale":{"domain":[-0.04,1.1],"nice":false},"type":"quantitative"},"y2":{"field":"axis_end"}},"transform":[{"calculate":"0.02","as":"axis_start"},{"calculate":"0.98","as":"axis_end"}]},{"data":{"name":"data-bc88d3f8cb41690dcc609682df8951c5"},"mark":{"type":"rule","color":"#9ba7a3","strokeWidth":1},"encoding":{"x":{"axis":null,"field":"tick_x_start","scale":{"domain":[-0.6,5.6],"nice":false},"type":"quantitative"},"x2":{"field":"tick_x_end"},"y":{"axis":null,"field":"normalized_value","scale":{"domain":[-0.04,1.1],"nice":false},"type":"quantitative"}}},{"data":{"name":"data-bc88d3f8cb41690dcc609682df8951c5"},"mark":{"type":"text","align":"left","baseline":"middle","color":"#626d69","dx":6,"fontSize":9},"encoding":{"text":{"field":"tick_label","type":"nominal"},"x":{"axis":null,"field":"axis_x","scale":{"domain":[-0.6,5.6],"nice":false},"type":"quantitative"},"y":{"axis":null,"field":"normalized_value","scale":{"domain":[-0.04,1.1],"nice":false},"type":"quantitative"}}},{"data":{"name":"data-bad2e703488a7fcee23d1f1b2276bf65"},"mark":{"type":"text","align":"center","baseline":"bottom","color":"#333333","fontSize":11,"fontWeight":"bold"},"encoding":{"text":{"field":"dimension","type":"nominal"},"x":{"axis":null,"field":"axis_x","scale":{"domain":[-0.6,5.6],"nice":false},"type":"quantitative"},"y":{"axis":null,"scale":{"domain":[-0.04,1.1],"nice":false},"datum":1.04}}}],"height":320,"title":{"text":"Data Centers by State","subtitle":"Numeric axes are scaled independently. Latest data: land 2026, electricity 2024, population 2025, unemployment 2025; water stress is average WRI facility score. Click up to 4 states to compare."},"width":"container","params":[{"name":"comparison_state_ids","value":[]}],"autosize":{"type":"fit","contains":"padding","resize":true}};
 
+          comparisonBarsSpec.title = null;
+          comparisonParallelSpec.title = null;
           const comparisonChart = document.getElementById("comparison-chart");
           const comparisonButtons = [...document.querySelectorAll("[data-comparison]")];
           let comparisonView = null;
